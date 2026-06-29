@@ -4,6 +4,7 @@
     "strict": true,
     "baseUrl": ".",
     "paths": {
+      "@/*": ["src/*"],
       "@core/*": ["src/core/*"],
       "@database/*": ["src/core/database/*"],
       "@features/*": ["src/features/*"],
