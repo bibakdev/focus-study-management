@@ -67,11 +67,9 @@ export function GroupListContainer() {
       }
     }
   };
-
   // هندلر ورود به جزئیات گروه
   const handleGroupPress = (group: Group) => {
-    console.log('ورود به گروه:', group.name);
-    // در آینده این قسمت کاربر را به صفحه داخل گروه هدایت می‌کند
+    router.push(`/room/${group.id}`);
   };
 
   // هندلر دکمه تنظیمات (هدایت به پنل دیباگ و دیتابیس)
@@ -96,7 +94,7 @@ export function GroupListContainer() {
       >
         <View className="gap-4">
           <TextInputWithIcon
-            iconName="person.3.fill"
+            iconName="people"
             placeholder="نام گروه (حداقل ۲ کاراکتر)"
             value={groupName}
             onChangeText={setGroupName}

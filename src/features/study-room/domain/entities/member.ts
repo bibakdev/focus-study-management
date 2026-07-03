@@ -3,6 +3,7 @@ export interface Member {
   groupId: string;
   name: string;
   isActive: boolean;
+  inBananaChallenge: boolean; // فیلد جدید
   activeStreak: number;
   absenceDays: number;
   consecutiveEggplants: number;
@@ -27,7 +28,6 @@ export interface MemberTarget {
   fridayMinutes: number;
 }
 
-// تایپ ترکیبی برای لایه UI (Presentational Props)
 export interface MemberWithTarget extends Member {
   target: MemberTarget | null;
 }

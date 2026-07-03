@@ -1,12 +1,12 @@
-// src/core/database/db.ts
-import { openDatabaseSync } from 'expo-sqlite';
 import { drizzle } from 'drizzle-orm/expo-sqlite';
+import { openDatabaseSync } from 'expo-sqlite';
 import * as schema from './schema';
 
-// باز کردن ارتباط سینک با دیتابیس
-export const expoDb = openDatabaseSync('focus_sync.db');
+// 🔥 تغییر کلیدی: اضافه شدن enableChangeListener برای فعال‌سازی رفرش خودکار
+export const expoDb = openDatabaseSync('focus_sync.db', {
+  enableChangeListener: true
+});
 
-// ایجاد جداول در صورت عدم وجود (تضمین اجرای اولیه)
 expoDb.execSync(`
   PRAGMA journal_mode = WAL;
   PRAGMA foreign_keys = ON;
@@ -25,6 +25,7 @@ expoDb.execSync(`
     group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
     name TEXT NOT NULL,
     is_active INTEGER NOT NULL DEFAULT 1,
+    in_banana_challenge INTEGER NOT NULL DEFAULT 1,
     active_streak INTEGER NOT NULL DEFAULT 0,
     absence_days INTEGER NOT NULL DEFAULT 0,
     consecutive_eggplants INTEGER NOT NULL DEFAULT 0,
@@ -52,5 +53,20 @@ expoDb.execSync(`
   CREATE INDEX IF NOT EXISTS target_group_id_idx ON member_targets (group_id);
 `);
 
-// ایجاد اینستنس اصلی Drizzle و تزریق اسکیماها برای تایپ‌سیف بودن روابط
+// مکانیزم Migration برای دیتابیس‌های موجود
+const migrations = [
+  'ALTER TABLE members ADD COLUMN in_banana_challenge INTEGER NOT NULL DEFAULT 1;',
+  'ALTER TABLE members ADD COLUMN absence_days INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN consecutive_eggplants INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN personal_record_minutes INTEGER NOT NULL DEFAULT 0;'
+];
+
+for (const query of migrations) {
+  try {
+    expoDb.execSync(query);
+  } catch (error) {
+    // ستون قبلاً اضافه شده است
+  }
+}
+
 export const db = drizzle(expoDb, { schema });

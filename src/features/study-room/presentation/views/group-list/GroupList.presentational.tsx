@@ -1,11 +1,10 @@
 // src/features/study-room/presentation/views/group-list/GroupList.presentational.tsx
-import React from 'react';
-import { View, ScrollView } from 'react-native';
-import { Header } from '../../components/Header';
-import { GroupCard } from '../../components/GroupCard';
-import { EmptyState } from '../../components/EmptyState';
 import { PrimaryActionButton } from '@/shared/components/buttons/PrimaryActionButton';
+import { ScrollView, View } from 'react-native';
 import { Group } from '../../../domain/entities/group';
+import { EmptyState } from '../../components/EmptyState';
+import { GroupCard } from '../../components/GroupCard';
+import { Header } from '../../components/Header';
 
 export interface GroupListPresentationalProps {
   groups: Group[];
@@ -44,7 +43,7 @@ export function GroupListPresentational({
       <View className="absolute bottom-6 left-5 right-5">
         <PrimaryActionButton
           label="ساخت گروه جدید"
-          iconName="plus"
+          iconName="add"
           onPress={onAddGroupPress}
         />
       </View>

@@ -1,8 +1,7 @@
 // src/features/study-room/presentation/components/Header.tsx
-import React from 'react';
-import { View, Text } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { GlassIconButton } from '@/shared/components/buttons/GlassIconButton';
+import { Text, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 interface HeaderProps {
   title: string;
@@ -18,7 +17,8 @@ export function Header({ title, onSettingsPress }: HeaderProps) {
       style={{ paddingTop: Math.max(insets.top, 20) + 16 }} // رعایت Safe Area
     >
       <View className="flex-row items-center justify-between">
-        <GlassIconButton iconName="gearshape.fill" onPress={onSettingsPress} />
+        {/* نام آیکون از gearshape.fill به settings تغییر یافت */}
+        <GlassIconButton iconName="settings" onPress={onSettingsPress} />
         <Text className="text-white text-xl font-bold font-[Vazirmatn]">
           {title}
         </Text>

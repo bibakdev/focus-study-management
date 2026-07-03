@@ -1,18 +1,17 @@
-import React from 'react';
-import { Pressable, PressableProps, View } from 'react-native';
-import { SymbolView, SFSymbol } from 'expo-symbols';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, PressableProps } from 'react-native';
 
 interface GlassIconButtonProps extends PressableProps {
-  iconName: SFSymbol;
+  iconName: keyof typeof Ionicons.glyphMap;
 }
 
 export function GlassIconButton({ iconName, ...props }: GlassIconButtonProps) {
   return (
     <Pressable
       {...props}
-      className="p-2 rounded-lg bg-white/20 active:scale-95 transition-all duration-200 overflow-hidden backdrop-blur-sm"
+      className="p-2 rounded-lg bg-surface-glass active:scale-95 transition-all duration-200 overflow-hidden"
     >
-      <SymbolView name={iconName} size={24} tintColor="white" weight="medium" />
+      <Ionicons name={iconName} size={24} color="white" />
     </Pressable>
   );
 }

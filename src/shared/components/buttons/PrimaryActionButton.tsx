@@ -1,10 +1,9 @@
-import React from 'react';
-import { Text, Pressable, PressableProps, View } from 'react-native';
-import { SymbolView, SFSymbol } from 'expo-symbols';
+import { Ionicons } from '@expo/vector-icons';
+import { Pressable, PressableProps, Text } from 'react-native';
 
 interface PrimaryActionButtonProps extends PressableProps {
   label: string;
-  iconName?: SFSymbol;
+  iconName?: keyof typeof Ionicons.glyphMap;
   isLoading?: boolean;
 }
 
@@ -18,12 +17,12 @@ export function PrimaryActionButton({
     <Pressable
       {...props}
       disabled={isLoading || props.disabled}
-      className={`flex-row items-center justify-center bg-indigo-600 rounded-2xl py-3 px-4 active:scale-95 active:bg-indigo-700 transition-all duration-200 gap-2 w-full ${isLoading || props.disabled ? 'opacity-70' : 'opacity-100'}`}
+      className={`flex-row items-center justify-center bg-primary-main rounded-2xl py-3 px-4 active:scale-95 transition-all duration-200 gap-2 w-full ${isLoading || props.disabled ? 'opacity-70' : 'opacity-100'}`}
     >
       {iconName && !isLoading && (
-        <SymbolView name={iconName} size={20} tintColor="white" weight="bold" />
+        <Ionicons name={iconName} size={20} color="white" />
       )}
-      <Text className="text-white font-bold text-lg text-center font-[Vazirmatn]">
+      <Text className="text-text-inverse font-bold text-lg text-center font-main">
         {isLoading ? 'در حال پردازش...' : label}
       </Text>
     </Pressable>

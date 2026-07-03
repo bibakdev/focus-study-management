@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
-import { View, TextInput, TextInputProps, Platform } from 'react-native';
-import { SymbolView, SFSymbol } from 'expo-symbols';
+import { Ionicons } from '@expo/vector-icons';
+import { useState } from 'react';
+import { TextInput, TextInputProps, View } from 'react-native';
 
 interface TextInputWithIconProps extends TextInputProps {
-  iconName: SFSymbol;
+  iconName: keyof typeof Ionicons.glyphMap;
 }
 
 export function TextInputWithIcon({
@@ -14,14 +14,16 @@ export function TextInputWithIcon({
 
   return (
     <View
-      className={`flex-row items-center bg-slate-50 border rounded-2xl px-4 py-3 gap-3 transition-all duration-200 ${
-        isFocused ? 'border-indigo-500 bg-indigo-50/30' : 'border-slate-200'
+      className={`flex-row items-center bg-surface-main border rounded-2xl px-4 py-3 gap-3 transition-all duration-200 ${
+        isFocused
+          ? 'border-primary-main bg-primary-light/30'
+          : 'border-surface-muted'
       }`}
     >
-      <SymbolView
+      <Ionicons
         name={iconName}
         size={20}
-        tintColor={isFocused ? '#4f46e5' : '#94a3b8'} // indigo-600 vs slate-400
+        color={isFocused ? '#4f46e5' : '#94a3b8'}
       />
       <TextInput
         {...props}
@@ -33,9 +35,9 @@ export function TextInputWithIcon({
           setIsFocused(false);
           props.onBlur?.(e);
         }}
-        placeholderTextColor="#94a3b8" // slate-400
-        className="flex-1 text-slate-800 text-sm font-[Vazirmatn]"
-        style={{ textAlign: 'right', outlineStyle: 'none' } as any} // حذف اوت‌لاین دیفالت در وب/برخی پلتفرم‌ها
+        placeholderTextColor="#94a3b8"
+        className="flex-1 text-text-primary text-sm font-main"
+        style={{ textAlign: 'right', outlineStyle: 'none' } as any}
       />
     </View>
   );
