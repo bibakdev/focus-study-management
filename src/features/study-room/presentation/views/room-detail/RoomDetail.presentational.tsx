@@ -2,6 +2,7 @@ import { BottomNav, TabType } from '@/shared/components/navigation/BottomNav';
 import { View } from 'react-native';
 import { Group } from '../../../domain/entities/group';
 import { RoomHeader } from '../../components/RoomHeader';
+import { TimeTab } from '../time-tab'; // ایمپورت کامپوننت جدید اضافه شد
 import { UsersTab } from '../users-tab';
 
 export interface RoomDetailPresentationalProps {
@@ -36,7 +37,11 @@ export function RoomDetailPresentational({
         {currentGroup && activeTab === 'users' && (
           <UsersTab groupId={currentGroup.id} />
         )}
-        {/* سایر تب‌ها در آینده اینجا اضافه می‌شوند */}
+
+        {/* شرط رندر شدن تب ساعت اضافه شد */}
+        {currentGroup && activeTab === 'time' && (
+          <TimeTab groupId={currentGroup.id} />
+        )}
       </View>
 
       {/* 3. بلوک نوار ناوبری پایین (Footer) */}

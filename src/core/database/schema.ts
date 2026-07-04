@@ -10,6 +10,21 @@ export const groups = sqliteTable('groups', {
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 });
 
+export const groupDates = sqliteTable(
+  'group_dates',
+  {
+    id: text('id').primaryKey(),
+    groupId: text('group_id')
+      .notNull()
+      .references(() => groups.id, { onDelete: 'cascade' }),
+    persianDate: text('persian_date').notNull(), // فرمت: 1403/05/12 با اعداد انگلیسی
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+  },
+  (table) => ({
+    groupIdIdx: index('group_date_group_id_idx').on(table.groupId)
+  })
+);
+
 export const members = sqliteTable(
   'members',
   {
@@ -21,7 +36,7 @@ export const members = sqliteTable(
     isActive: integer('is_active', { mode: 'boolean' }).notNull().default(true),
     inBananaChallenge: integer('in_banana_challenge', { mode: 'boolean' })
       .notNull()
-      .default(true), // فیلد جدید
+      .default(true),
     activeStreak: integer('active_streak').notNull().default(0),
     absenceDays: integer('absence_days').notNull().default(0),
     consecutiveEggplants: integer('consecutive_eggplants').notNull().default(0),
@@ -65,7 +80,8 @@ export const memberTargets = sqliteTable(
 
 export const groupsRelations = relations(groups, ({ many }) => ({
   members: many(members),
-  targets: many(memberTargets)
+  targets: many(memberTargets),
+  dates: many(groupDates)
 }));
 
 export const membersRelations = relations(members, ({ one }) => ({

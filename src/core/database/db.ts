@@ -2,7 +2,6 @@ import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { openDatabaseSync } from 'expo-sqlite';
 import * as schema from './schema';
 
-// 🔥 تغییر کلیدی: اضافه شدن enableChangeListener برای فعال‌سازی رفرش خودکار
 export const expoDb = openDatabaseSync('focus_sync.db', {
   enableChangeListener: true
 });
@@ -19,6 +18,14 @@ expoDb.execSync(`
     max_eggplants_allowed INTEGER NOT NULL DEFAULT 3,
     created_at INTEGER NOT NULL
   );
+
+  CREATE TABLE IF NOT EXISTS group_dates (
+    id TEXT PRIMARY KEY NOT NULL,
+    group_id TEXT NOT NULL REFERENCES groups(id) ON DELETE CASCADE,
+    persian_date TEXT NOT NULL,
+    created_at INTEGER NOT NULL
+  );
+  CREATE INDEX IF NOT EXISTS group_date_group_id_idx ON group_dates (group_id);
 
   CREATE TABLE IF NOT EXISTS members (
     id TEXT PRIMARY KEY NOT NULL,
@@ -53,7 +60,6 @@ expoDb.execSync(`
   CREATE INDEX IF NOT EXISTS target_group_id_idx ON member_targets (group_id);
 `);
 
-// مکانیزم Migration برای دیتابیس‌های موجود
 const migrations = [
   'ALTER TABLE members ADD COLUMN in_banana_challenge INTEGER NOT NULL DEFAULT 1;',
   'ALTER TABLE members ADD COLUMN absence_days INTEGER NOT NULL DEFAULT 0;',

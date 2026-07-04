@@ -1,6 +1,11 @@
 // src/app/debug.tsx
 import { db } from '@/core/database/db';
-import { groups, members, memberTargets } from '@/core/database/schema'; // ایمپورت تمام جداول
+import {
+  groupDates,
+  groups,
+  members,
+  memberTargets
+} from '@/core/database/schema'; // اضافه شدن groupDates
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useRouter } from 'expo-router';
@@ -15,7 +20,8 @@ import {
   View
 } from 'react-native';
 
-type TabType = 'groups' | 'members' | 'targets';
+// تب جدید dates اضافه شد
+type TabType = 'groups' | 'members' | 'targets' | 'dates';
 
 export default function DebugScreen() {
   const router = useRouter();
@@ -27,6 +33,7 @@ export default function DebugScreen() {
   const { data: allGroups } = useLiveQuery(db.select().from(groups));
   const { data: allMembers } = useLiveQuery(db.select().from(members));
   const { data: allTargets } = useLiveQuery(db.select().from(memberTargets));
+  const { data: allDates } = useLiveQuery(db.select().from(groupDates)); // کوئری جدول جدید
 
   // استیت‌های مربوط به مدال ویرایش (فعلاً برای گروه‌ها)
   const [editingGroup, setEditingGroup] = useState<any>(null);
@@ -46,6 +53,8 @@ export default function DebugScreen() {
         await db.delete(members).where(eq(members.id, id));
       } else if (activeTab === 'targets') {
         await db.delete(memberTargets).where(eq(memberTargets.id, id));
+      } else if (activeTab === 'dates') {
+        await db.delete(groupDates).where(eq(groupDates.id, id)); // منطق حذف تاریخ
       }
       Alert.alert('موفق', 'رکورد حذف شد');
     } catch (error) {
@@ -89,6 +98,7 @@ export default function DebugScreen() {
     if (activeTab === 'groups') return allGroups;
     if (activeTab === 'members') return allMembers;
     if (activeTab === 'targets') return allTargets;
+    if (activeTab === 'dates') return allDates; // بازگرداندن دیتای تاریخ‌ها
     return [];
   };
 
@@ -115,20 +125,33 @@ export default function DebugScreen() {
           onPress={() => setActiveTab('groups')}
           className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'groups' ? 'bg-indigo-600' : 'bg-transparent'}`}
         >
-          <Text className="text-white font-bold font-[Vazirmatn]">گروه‌ها</Text>
+          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
+            گروه‌ها
+          </Text>
         </Pressable>
         <Pressable
           onPress={() => setActiveTab('members')}
           className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'members' ? 'bg-indigo-600' : 'bg-transparent'}`}
         >
-          <Text className="text-white font-bold font-[Vazirmatn]">اعضا</Text>
+          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
+            اعضا
+          </Text>
         </Pressable>
         <Pressable
           onPress={() => setActiveTab('targets')}
           className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'targets' ? 'bg-indigo-600' : 'bg-transparent'}`}
         >
-          <Text className="text-white font-bold font-[Vazirmatn]">
+          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
             تارگت‌ها
+          </Text>
+        </Pressable>
+        {/* تب جدید تاریخ‌ها */}
+        <Pressable
+          onPress={() => setActiveTab('dates')}
+          className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'dates' ? 'bg-indigo-600' : 'bg-transparent'}`}
+        >
+          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
+            تاریخ‌ها
           </Text>
         </Pressable>
       </View>
