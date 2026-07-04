@@ -10,13 +10,19 @@ import { and, desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import { MemberStatusRepositoryImpl } from '../../../data/repositories/member-status.repository.impl';
 import { Member } from '../../../domain/entities/member';
+import { CalculateAbsenceUseCase } from '../../../domain/use-cases/calculate-absence.use-case';
 import {
   ConflictGroup,
   ExtractedRecord
 } from '../../components/ExtractedUsersList';
 import { FinalLog } from '../../components/FinalLogsList';
 import { TimeTabPresentational } from './TimeTab.presentational';
+
+// معرفی Use Case برای محاسبه غیبت‌ها
+const memberStatusRepo = new MemberStatusRepositoryImpl();
+const calculateAbsenceUseCase = new CalculateAbsenceUseCase(memberStatusRepo);
 
 interface TimeTabContainerProps {
   groupId: string;
@@ -40,7 +46,6 @@ const formatTimeStr = (minutes: number) => {
   return `${m}m`;
 };
 
-// حداکثر زمان مجاز مطالعه (۱۸ ساعت = ۱۰۸۰ دقیقه)
 const MAX_STUDY_MINUTES = 18 * 60;
 
 export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
@@ -102,6 +107,15 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     }
   }, [savedDates, activeDate, isEditing]);
 
+  // متد کمکی برای اجرای محاسبه پس از هر تغییر
+  const recalculateAbsence = async () => {
+    try {
+      await calculateAbsenceUseCase.execute(groupId);
+    } catch (error) {
+      console.error('Error recalculating absence:', error);
+    }
+  };
+
   const handleConfirmDate = async (date: string) => {
     try {
       const existingRecords = await db
@@ -123,6 +137,8 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       setIsEditing(false);
       setActiveDate(date);
       setActiveDateId(currentId);
+
+      await recalculateAbsence(); // محاسبه پس از اضافه کردن تاریخ جدید
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ذخیره تاریخ رخ داد.');
     }
@@ -145,7 +161,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       const trimmedName = data.name.trim();
       let finalMemberId = data.memberId;
 
-      // ۱. اگر آیدی مشخص نبود، ابتدا کاربر را پیدا یا ایجاد می‌کنیم
       if (!finalMemberId) {
         const currentMembers = await db
           .select()
@@ -181,7 +196,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         }
       }
 
-      // ۲. بررسی اینکه آیا این شخص قبلاً در لیست نهاییِ امروز ثبت شده است یا خیر
       const existingLog = await db
         .select()
         .from(studyLogs)
@@ -197,10 +211,9 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
           'تداخل نام',
           'کاربری با این نام قبلاً در لیست نهایی امروز ثبت شده است. لطفاً برای ثبت شخص جدید، نام او را تغییر دهید.'
         );
-        return; // توقف عملیات
+        return;
       }
 
-      // ۳. اگر تکراری نبود، لاگ ذخیره می‌شود
       await db.insert(studyLogs).values({
         id: generateUUID(),
         memberId: finalMemberId,
@@ -208,7 +221,9 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         studyMinutes: data.minutes,
         createdAt: new Date()
       });
+
       setRefreshKey((prev) => prev + 1);
+      await recalculateAbsence(); // محاسبه پس از ثبت تایم دستی
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ثبت زمان به وجود آمد.');
     } finally {
@@ -304,7 +319,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     if (matched) {
       targetMemberId = matched.id;
 
-      // اگر کاربر در دیتابیس بود، بررسی می‌کنیم که امروز لاگی نداشته باشد
       const existingLog = await db
         .select()
         .from(studyLogs)
@@ -316,7 +330,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         );
 
       if (existingLog.length > 0) {
-        // پرتاب خطای سفارشی برای مدیریت در توابع بالاتر
         throw new Error('DUPLICATE_LOG');
       }
     } else {
@@ -359,7 +372,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     try {
       await processApproval(record);
 
-      // در صورت موفقیت، از لیست مربوطه حذف می‌شود
       if (type === 'OLD')
         setOldUsers((prev) => prev.filter((u) => u.id !== record.id));
       if (type === 'NEW')
@@ -375,6 +387,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         );
       }
       setRefreshKey((prev) => prev + 1);
+      await recalculateAbsence(); // محاسبه پس از تایید تکی
     } catch (error: any) {
       if (error.message === 'DUPLICATE_LOG') {
         Alert.alert(
@@ -393,7 +406,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       const successfulIds = new Set<string>();
       const failedNames: string[] = [];
 
-      // پردازش تک‌تک رکوردها برای مدیریت خطاهای اختصاصی
       for (const record of recordsToProcess) {
         try {
           await processApproval(record);
@@ -402,12 +414,11 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
           if (error.message === 'DUPLICATE_LOG') {
             failedNames.push(record.name);
           } else {
-            throw error; // خطاهای دیتابیس به catch بیرونی می‌روند
+            throw error;
           }
         }
       }
 
-      // فقط آن‌هایی که با موفقیت ثبت شدند را از لیست حذف می‌کنیم
       if (type === 'OLD') {
         setOldUsers((prev) => prev.filter((u) => !successfulIds.has(u.id)));
       }
@@ -415,7 +426,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         setNewUsers((prev) => prev.filter((u) => !successfulIds.has(u.id)));
       }
 
-      // نمایش هشدار برای نام‌های تکراری
       if (failedNames.length > 0) {
         Alert.alert(
           'تداخل نام',
@@ -424,6 +434,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       }
 
       setRefreshKey((prev) => prev + 1);
+      await recalculateAbsence(); // محاسبه پس از تایید همه
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ثبت گروهی پیش آمد.');
     }
@@ -480,6 +491,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     try {
       await db.delete(studyLogs).where(eq(studyLogs.id, logId));
       setRefreshKey((prev) => prev + 1);
+      await recalculateAbsence(); // محاسبه پس از حذف لاگ
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در حذف لاگ پیش آمد.');
     }
@@ -524,6 +536,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         .where(eq(members.id, memberId));
 
       setRefreshKey((prev) => prev + 1);
+      await recalculateAbsence(); // محاسبه پس از ویرایش لاگ
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ویرایش اطلاعات در دیتابیس پیش آمد.');
     }

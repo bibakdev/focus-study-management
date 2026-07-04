@@ -9,10 +9,8 @@ interface UserCardProps {
 }
 
 export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
-  // حرف اول نام برای آواتار
   const firstChar = user.name.charAt(0).toUpperCase();
 
-  // تاریخ عضویت شمسی
   const joinDate = new Intl.DateTimeFormat('fa-IR', {
     calendar: 'persian',
     year: 'numeric',
@@ -20,17 +18,14 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
     day: 'numeric'
   }).format(new Date(user.joinedAt));
 
-  // تبدیل دقیقه به فرمت ساعت:دقیقه (مثلاً 2:10 یا 0:45)
   const formatTime = (minutes: number) => {
     if (!minutes) return '0:00';
     const h = Math.floor(minutes / 60);
     const m = minutes % 60;
-    // اضافه کردن صفر قبل از اعداد یک رقمی برای دقیقه
     const paddedMinutes = m.toString().padStart(2, '0');
     return `${h}:${paddedMinutes}`;
   };
 
-  // محاسبه تارگت امروز
   const getTodayTarget = () => {
     if (!user.target) return formatTime(0);
     if (user.target.targetType === 'FIXED')
@@ -50,13 +45,11 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
   };
 
   const targetDisplay = getTodayTarget();
-  const daysInStatus = user.isActive ? user.activeStreak : user.absenceDays;
+  const statusText = user.isActive ? 'فعال' : 'غیرفعال';
 
   return (
     <View className="bg-surface-card rounded-2xl p-4 mb-4 shadow-sm border border-surface-muted">
-      {/* ردیف اول: وضعیت (چپ) و هویت کاربر (راست) */}
       <View className="flex-row justify-between items-start mb-3">
-        {/* سمت چپ: وضعیت و تعداد روز */}
         <View className="items-start">
           <View
             className={`flex-row items-center px-2.5 py-1 rounded-lg ${user.isActive ? 'bg-status-success-light' : 'bg-status-danger-light'}`}
@@ -64,18 +57,20 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
             <Text
               className={`text-xs font-bold font-main mr-1.5 ${user.isActive ? 'text-status-success-main' : 'text-status-danger-main'}`}
             >
-              {user.isActive ? 'فعال' : 'غیرفعال'}
+              {statusText}
             </Text>
             <View
               className={`w-1.5 h-1.5 rounded-full ${user.isActive ? 'bg-status-success-main' : 'bg-status-danger-main'}`}
             />
           </View>
-          <Text className="text-[10px] text-text-muted font-main mt-1.5 ml-1">
-            {daysInStatus} روز در این وضعیت
-          </Text>
+          {/* متن غیبت فقط زمانی که کاربر غیرفعال است رندر می‌شود */}
+          {!user.isActive && (
+            <Text className="text-[10px] text-text-muted font-main mt-1.5 ml-1">
+              {user.absenceDays} روز غیبت متوالی
+            </Text>
+          )}
         </View>
 
-        {/* سمت راست: آیکون موز (در صورت شرکت در چالش) + نام + آواتار */}
         <View className="flex-row items-center gap-2">
           {user.inBananaChallenge && <Text className="text-lg">🍌</Text>}
           <Text className="text-text-primary font-bold text-lg font-main">
@@ -89,9 +84,7 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
         </View>
       </View>
 
-      {/* ردیف دوم: آمار و ارقام (تارگت، استمرار، تاریخ) */}
       <View className="flex-row flex-wrap justify-end gap-2 mb-4">
-        {/* تاریخ عضویت */}
         <View className="flex-row items-center bg-surface-muted px-2.5 py-1.5 rounded-lg gap-1.5">
           <Text className="text-xs font-main text-text-secondary">
             {joinDate}
@@ -99,7 +92,7 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
           <Ionicons name="calendar-outline" size={14} color="#64748b" />
         </View>
 
-        {/* استمرار */}
+        {/* بج استمرار آتشین برگشت */}
         <View className="flex-row items-center bg-badge-streak-light px-2.5 py-1.5 rounded-lg gap-1.5">
           <Text className="text-xs font-bold font-main text-badge-streak-main">
             استمرار: {user.activeStreak} روز
@@ -107,7 +100,6 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
           <Text className="text-xs">🔥</Text>
         </View>
 
-        {/* تارگت امروز */}
         <View className="flex-row items-center bg-primary-light/30 px-2.5 py-1.5 rounded-lg gap-1.5">
           <Text className="text-xs font-bold font-main text-primary-main">
             تارگت امروز: {targetDisplay}
@@ -116,7 +108,6 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
         </View>
       </View>
 
-      {/* ردیف سوم: دکمه‌های عملیاتی */}
       <View className="flex-row items-center justify-start gap-3 pt-3 border-t border-surface-muted">
         <Pressable
           onPress={() => onDelete(user)}
