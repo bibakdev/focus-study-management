@@ -55,9 +55,18 @@ expoDb.execSync(`
     friday_minutes INTEGER NOT NULL DEFAULT 0
   );
 
+  CREATE TABLE IF NOT EXISTS study_logs (
+    id TEXT PRIMARY KEY NOT NULL,
+    member_id TEXT NOT NULL REFERENCES members(id) ON DELETE CASCADE,
+    group_date_id TEXT NOT NULL REFERENCES group_dates(id) ON DELETE CASCADE,
+    study_minutes INTEGER NOT NULL DEFAULT 0,
+    created_at INTEGER NOT NULL
+  );
+
   CREATE INDEX IF NOT EXISTS member_group_id_idx ON members (group_id);
   CREATE INDEX IF NOT EXISTS target_member_id_idx ON member_targets (member_id);
   CREATE INDEX IF NOT EXISTS target_group_id_idx ON member_targets (group_id);
+  CREATE INDEX IF NOT EXISTS log_member_date_idx ON study_logs (member_id, group_date_id);
 `);
 
 const migrations = [

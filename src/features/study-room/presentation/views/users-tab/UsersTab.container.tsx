@@ -93,13 +93,32 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
   };
 
   const handleSaveUser = async (data: UserFormData) => {
+    const trimmedName = data.name.trim();
+
     // ۱. اعتبارسنجی نام
-    if (!data.name.trim()) {
+    if (!trimmedName) {
       Alert.alert('خطا', 'لطفاً نام کاربر را وارد کنید.');
       return;
     }
 
-    // ۲. اعتبارسنجی سقف ۱۸ ساعت برای تارگت‌ها
+    // ۲. اعتبارسنجی نام تکراری در دیتابیس
+    const currentMembers = await db
+      .select()
+      .from(members)
+      .where(eq(members.groupId, groupId));
+
+    const isDuplicate = currentMembers.some(
+      (m) =>
+        m.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+        m.id !== editingUser?.member.id // نادیده گرفتن خود کاربر هنگام ویرایش
+    );
+
+    if (isDuplicate) {
+      Alert.alert('کاربر تکراری', 'کاربری با این نام قبلاً در گروه وجود دارد.');
+      return;
+    }
+
+    // ۳. اعتبارسنجی سقف ۱۸ ساعت برای تارگت‌ها
     if (data.targetType === 'FIXED') {
       if (timeToMins(data.defaultTime) > MAX_TARGET_MINUTES) {
         Alert.alert('خطا', 'تارگت مطالعه نمی‌تواند بیشتر از ۱۸ ساعت باشد.');
@@ -125,7 +144,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
         await db
           .update(members)
           .set({
-            name: data.name,
+            name: trimmedName,
             isActive: data.isActive,
             inBananaChallenge: data.inBananaChallenge,
             activeStreak: data.activeStreak,
@@ -153,7 +172,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
         await db.insert(members).values({
           id: newMemberId,
           groupId,
-          name: data.name,
+          name: trimmedName,
           isActive: data.isActive,
           inBananaChallenge: data.inBananaChallenge,
           activeStreak: data.activeStreak,

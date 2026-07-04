@@ -1,12 +1,12 @@
-import React, { useEffect, useState } from 'react';
-import { useRouter, useLocalSearchParams } from 'expo-router';
-import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { db } from '@/core/database/db';
 import { groups } from '@/core/database/schema';
+import { TabType } from '@/shared/components/navigation/BottomNav';
 import { desc } from 'drizzle-orm';
+import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useEffect, useState } from 'react';
 import { Group } from '../../../domain/entities/group';
 import { RoomDetailPresentational } from './RoomDetail.presentational';
-import { TabType } from '@/shared/components/navigation/BottomNav';
 
 export function RoomDetailContainer() {
   const router = useRouter();
@@ -34,14 +34,14 @@ export function RoomDetailContainer() {
     router.replace(`/room/${newGroupId}`);
   };
 
+  // هدایت به صفحه مدیریت گروه‌ها
   const handleManageGroupsPress = () => {
-    router.push('/');
+    router.push('/groups');
   };
 
   // هندلر تغییر تب
   const handleTabPress = (tab: TabType) => {
     setActiveTab(tab);
-    // در آینده اینجا می‌توانیم محتوای صفحه را بر اساس تب تغییر دهیم
   };
 
   return (

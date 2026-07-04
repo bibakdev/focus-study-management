@@ -17,7 +17,7 @@ export const groupDates = sqliteTable(
     groupId: text('group_id')
       .notNull()
       .references(() => groups.id, { onDelete: 'cascade' }),
-    persianDate: text('persian_date').notNull(), // فرمت: 1403/05/12 با اعداد انگلیسی
+    persianDate: text('persian_date').notNull(),
     createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
   },
   (table) => ({
@@ -78,16 +78,55 @@ export const memberTargets = sqliteTable(
   })
 );
 
+// جدول جدید برای ذخیره زمان مطالعه هر کاربر در یک تاریخ خاص
+export const studyLogs = sqliteTable(
+  'study_logs',
+  {
+    id: text('id').primaryKey(),
+    memberId: text('member_id')
+      .notNull()
+      .references(() => members.id, { onDelete: 'cascade' }),
+    groupDateId: text('group_date_id')
+      .notNull()
+      .references(() => groupDates.id, { onDelete: 'cascade' }),
+    studyMinutes: integer('study_minutes').notNull().default(0),
+    createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
+  },
+  (table) => ({
+    memberDateIdx: index('log_member_date_idx').on(
+      table.memberId,
+      table.groupDateId
+    )
+  })
+);
+
 export const groupsRelations = relations(groups, ({ many }) => ({
   members: many(members),
   targets: many(memberTargets),
   dates: many(groupDates)
 }));
 
-export const membersRelations = relations(members, ({ one }) => ({
+export const groupDatesRelations = relations(groupDates, ({ many, one }) => ({
+  group: one(groups, { fields: [groupDates.groupId], references: [groups.id] }),
+  logs: many(studyLogs)
+}));
+
+export const membersRelations = relations(members, ({ one, many }) => ({
   group: one(groups, { fields: [members.groupId], references: [groups.id] }),
   target: one(memberTargets, {
     fields: [members.id],
     references: [memberTargets.memberId]
+  }),
+  logs: many(studyLogs)
+}));
+
+export const studyLogsRelations = relations(studyLogs, ({ one }) => ({
+  member: one(members, {
+    fields: [studyLogs.memberId],
+    references: [members.id]
+  }),
+  date: one(groupDates, {
+    fields: [studyLogs.groupDateId],
+    references: [groupDates.id]
   })
 }));

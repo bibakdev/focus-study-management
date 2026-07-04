@@ -4,8 +4,9 @@ import {
   groupDates,
   groups,
   members,
-  memberTargets
-} from '@/core/database/schema'; // اضافه شدن groupDates
+  memberTargets,
+  studyLogs
+} from '@/core/database/schema';
 import { eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useRouter } from 'expo-router';
@@ -20,22 +21,21 @@ import {
   View
 } from 'react-native';
 
-// تب جدید dates اضافه شد
-type TabType = 'groups' | 'members' | 'targets' | 'dates';
+// تب logs اضافه شد
+type TabType = 'groups' | 'members' | 'targets' | 'dates' | 'logs';
 
 export default function DebugScreen() {
   const router = useRouter();
 
-  // استیت تب فعال
   const [activeTab, setActiveTab] = useState<TabType>('groups');
 
-  // خواندن مجزای دیتاهای هر جدول
+  // دریافت لایو دیتا از تمام جداول
   const { data: allGroups } = useLiveQuery(db.select().from(groups));
   const { data: allMembers } = useLiveQuery(db.select().from(members));
   const { data: allTargets } = useLiveQuery(db.select().from(memberTargets));
-  const { data: allDates } = useLiveQuery(db.select().from(groupDates)); // کوئری جدول جدید
+  const { data: allDates } = useLiveQuery(db.select().from(groupDates));
+  const { data: allLogs } = useLiveQuery(db.select().from(studyLogs)); // جدول لاگ‌ها
 
-  // استیت‌های مربوط به مدال ویرایش (فعلاً برای گروه‌ها)
   const [editingGroup, setEditingGroup] = useState<any>(null);
   const [editForm, setEditForm] = useState({
     name: '',
@@ -44,7 +44,6 @@ export default function DebugScreen() {
     maxEggplantsAllowed: ''
   });
 
-  // هندلر حذف داینامیک بر اساس تب فعال
   const handleDelete = async (id: string) => {
     try {
       if (activeTab === 'groups') {
@@ -54,15 +53,16 @@ export default function DebugScreen() {
       } else if (activeTab === 'targets') {
         await db.delete(memberTargets).where(eq(memberTargets.id, id));
       } else if (activeTab === 'dates') {
-        await db.delete(groupDates).where(eq(groupDates.id, id)); // منطق حذف تاریخ
+        await db.delete(groupDates).where(eq(groupDates.id, id));
+      } else if (activeTab === 'logs') {
+        await db.delete(studyLogs).where(eq(studyLogs.id, id)); // حذف لاگ
       }
-      Alert.alert('موفق', 'رکورد حذف شد');
+      Alert.alert('موفق', 'رکورد با موفقیت حذف شد');
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در حذف پیش آمد');
     }
   };
 
-  // باز کردن فرم ویرایش (مختص گروه)
   const openEditModal = (group: any) => {
     setEditingGroup(group);
     setEditForm({
@@ -93,12 +93,12 @@ export default function DebugScreen() {
     }
   };
 
-  // تابع کمکی برای دریافت دیتای تب فعال
   const getActiveData = () => {
     if (activeTab === 'groups') return allGroups;
     if (activeTab === 'members') return allMembers;
     if (activeTab === 'targets') return allTargets;
-    if (activeTab === 'dates') return allDates; // بازگرداندن دیتای تاریخ‌ها
+    if (activeTab === 'dates') return allDates;
+    if (activeTab === 'logs') return allLogs; // بازگرداندن دیتای لاگ‌ها
     return [];
   };
 
@@ -108,58 +108,61 @@ export default function DebugScreen() {
     <View className="flex-1 bg-slate-900 pt-12 px-4">
       {/* هدر */}
       <View className="flex-row justify-between items-center mb-6">
-        <Text className="text-white font-bold text-xl font-[Vazirmatn]">
+        <Text className="text-white font-bold text-xl font-main">
           🛠 پنل دیتابیس
         </Text>
         <Pressable
           onPress={() => router.back()}
           className="bg-slate-700 px-4 py-2 rounded-lg active:scale-95"
         >
-          <Text className="text-white font-bold font-[Vazirmatn]">برگشت</Text>
+          <Text className="text-white font-bold font-main">برگشت</Text>
         </Pressable>
       </View>
 
       {/* تب‌ها */}
-      <View className="flex-row gap-2 mb-4 bg-slate-800 p-1 rounded-xl">
+      <View className="flex-row flex-wrap gap-2 mb-4 bg-slate-800 p-2 rounded-xl">
         <Pressable
           onPress={() => setActiveTab('groups')}
-          className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'groups' ? 'bg-indigo-600' : 'bg-transparent'}`}
+          className={`flex-1 min-w-[60px] py-2 rounded-lg items-center ${activeTab === 'groups' ? 'bg-indigo-600' : 'bg-transparent'}`}
         >
-          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
+          <Text className="text-white text-xs font-bold font-main">
             گروه‌ها
           </Text>
         </Pressable>
         <Pressable
           onPress={() => setActiveTab('members')}
-          className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'members' ? 'bg-indigo-600' : 'bg-transparent'}`}
+          className={`flex-1 min-w-[60px] py-2 rounded-lg items-center ${activeTab === 'members' ? 'bg-indigo-600' : 'bg-transparent'}`}
         >
-          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
-            اعضا
-          </Text>
+          <Text className="text-white text-xs font-bold font-main">اعضا</Text>
         </Pressable>
         <Pressable
           onPress={() => setActiveTab('targets')}
-          className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'targets' ? 'bg-indigo-600' : 'bg-transparent'}`}
+          className={`flex-1 min-w-[60px] py-2 rounded-lg items-center ${activeTab === 'targets' ? 'bg-indigo-600' : 'bg-transparent'}`}
         >
-          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
+          <Text className="text-white text-xs font-bold font-main">
             تارگت‌ها
           </Text>
         </Pressable>
-        {/* تب جدید تاریخ‌ها */}
         <Pressable
           onPress={() => setActiveTab('dates')}
-          className={`flex-1 py-2 rounded-lg items-center ${activeTab === 'dates' ? 'bg-indigo-600' : 'bg-transparent'}`}
+          className={`flex-1 min-w-[60px] py-2 rounded-lg items-center ${activeTab === 'dates' ? 'bg-indigo-600' : 'bg-transparent'}`}
         >
-          <Text className="text-white text-xs font-bold font-[Vazirmatn]">
+          <Text className="text-white text-xs font-bold font-main">
             تاریخ‌ها
           </Text>
+        </Pressable>
+        <Pressable
+          onPress={() => setActiveTab('logs')}
+          className={`flex-1 min-w-[60px] py-2 rounded-lg items-center ${activeTab === 'logs' ? 'bg-indigo-600' : 'bg-transparent'}`}
+        >
+          <Text className="text-white text-xs font-bold font-main">لاگ‌ها</Text>
         </Pressable>
       </View>
 
       {/* لیست دیتاها */}
       <ScrollView showsVerticalScrollIndicator={false}>
         {activeData?.length === 0 && (
-          <Text className="text-slate-400 text-center mt-10 font-[Vazirmatn]">
+          <Text className="text-slate-400 text-center mt-10 font-main">
             جدول {activeTab} در حال حاضر خالی است.
           </Text>
         )}
@@ -177,13 +180,12 @@ export default function DebugScreen() {
             </Text>
 
             <View className="flex-row gap-2">
-              {/* دکمه ویرایش فقط برای تب گروه‌ها نمایش داده می‌شود */}
               {activeTab === 'groups' && (
                 <Pressable
                   onPress={() => openEditModal(record)}
                   className="flex-1 bg-indigo-600 py-3 rounded-lg active:bg-indigo-700 active:scale-95"
                 >
-                  <Text className="text-white text-center font-bold font-[Vazirmatn]">
+                  <Text className="text-white text-center font-bold font-main">
                     ویرایش
                   </Text>
                 </Pressable>
@@ -193,7 +195,7 @@ export default function DebugScreen() {
                 onPress={() => handleDelete(record.id)}
                 className="flex-1 bg-rose-600 py-3 rounded-lg active:bg-rose-700 active:scale-95"
               >
-                <Text className="text-white text-center font-bold font-[Vazirmatn]">
+                <Text className="text-white text-center font-bold font-main">
                   حذف
                 </Text>
               </Pressable>
@@ -206,19 +208,19 @@ export default function DebugScreen() {
       <Modal visible={!!editingGroup} transparent animationType="slide">
         <View className="flex-1 justify-center items-center bg-black/70 px-4">
           <View className="bg-slate-800 p-5 rounded-2xl w-full border border-slate-700">
-            <Text className="text-white font-bold text-lg mb-4 text-center font-[Vazirmatn]">
+            <Text className="text-white font-bold text-lg mb-4 text-center font-main">
               ویرایش مستقیم رکورد
             </Text>
 
             <TextInput
-              className="bg-slate-900 text-white p-3 rounded-lg mb-3 font-[Vazirmatn] text-right"
+              className="bg-slate-900 text-white p-3 rounded-lg mb-3 font-main text-right"
               placeholder="نام گروه"
               placeholderTextColor="#64748b"
               value={editForm.name}
               onChangeText={(text) => setEditForm({ ...editForm, name: text })}
             />
             <TextInput
-              className="bg-slate-900 text-white p-3 rounded-lg mb-3 font-[Vazirmatn] text-right"
+              className="bg-slate-900 text-white p-3 rounded-lg mb-3 font-main text-right"
               placeholder="تارگت موز"
               placeholderTextColor="#64748b"
               keyboardType="numeric"
@@ -228,7 +230,7 @@ export default function DebugScreen() {
               }
             />
             <TextInput
-              className="bg-slate-900 text-white p-3 rounded-lg mb-3 font-[Vazirmatn] text-right"
+              className="bg-slate-900 text-white p-3 rounded-lg mb-3 font-main text-right"
               placeholder="حداقل بادمجون"
               placeholderTextColor="#64748b"
               keyboardType="numeric"
@@ -238,7 +240,7 @@ export default function DebugScreen() {
               }
             />
             <TextInput
-              className="bg-slate-900 text-white p-3 rounded-lg mb-5 font-[Vazirmatn] text-right"
+              className="bg-slate-900 text-white p-3 rounded-lg mb-5 font-main text-right"
               placeholder="سقف مجاز"
               placeholderTextColor="#64748b"
               keyboardType="numeric"
@@ -253,7 +255,7 @@ export default function DebugScreen() {
                 onPress={() => setEditingGroup(null)}
                 className="flex-1 bg-slate-600 py-3 rounded-lg active:scale-95"
               >
-                <Text className="text-white text-center font-bold font-[Vazirmatn]">
+                <Text className="text-white text-center font-bold font-main">
                   انصراف
                 </Text>
               </Pressable>
@@ -261,7 +263,7 @@ export default function DebugScreen() {
                 onPress={handleUpdateGroup}
                 className="flex-1 bg-emerald-600 py-3 rounded-lg active:scale-95"
               >
-                <Text className="text-white text-center font-bold font-[Vazirmatn]">
+                <Text className="text-white text-center font-bold font-main">
                   ذخیره
                 </Text>
               </Pressable>

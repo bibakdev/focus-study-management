@@ -97,10 +97,6 @@ export function DateSelector({
     setInputValue(getIRSTPersianDate(-1));
   };
 
-  const handleSetYesterday = () => {
-    setInputValue(getIRSTPersianDate(-2));
-  };
-
   const handleConfirm = () => {
     const regex = /^[0-9]{4}\/[0-9]{2}\/[0-9]{2}$/;
     if (!regex.test(inputValue.trim())) {
@@ -114,7 +110,6 @@ export function DateSelector({
     onConfirm(inputValue.trim());
   };
 
-  // رندر حالت فشرده (دقیقاً مطابق با تصویر: بک‌گراند فلت و یک‌دست)
   if (selectedDate) {
     const weekdayName = getPersianWeekday(selectedDate);
 
@@ -125,7 +120,6 @@ export function DateSelector({
         exiting={FadeOut}
         className="bg-primary-light/30 border border-primary-light/50 rounded-3xl p-4 flex-row items-center justify-between"
       >
-        {/* سمت چپ: دکمه تغییر تاریخ */}
         <Pressable
           onPress={onEdit}
           className="bg-surface-card px-4 py-2 rounded-xl active:scale-95 transition-transform border border-primary-light/50"
@@ -135,7 +129,6 @@ export function DateSelector({
           </Text>
         </Pressable>
 
-        {/* سمت راست: متن اطلاعات */}
         <View className="items-end">
           <Text className="text-primary-main/70 text-[11px] font-main font-bold mb-1">
             در حال ثبت اطلاعات برای:
@@ -151,7 +144,6 @@ export function DateSelector({
     );
   }
 
-  // رندر حالت فرم ورود
   return (
     <Animated.View
       layout={Layout.springify().damping(15)}
@@ -173,22 +165,13 @@ export function DateSelector({
         keyboardType="numeric"
       />
 
-      <View className="flex-row gap-3 mt-4 mb-6">
-        <Pressable
-          onPress={handleSetYesterday}
-          className="flex-1 bg-surface-muted py-3 rounded-xl items-center active:bg-slate-200 active:scale-95 transition-all"
-        >
-          <Text className="text-text-secondary font-bold font-main text-sm">
-            دیروز
-          </Text>
-        </Pressable>
-
+      <View className="mt-4 mb-6">
         <Pressable
           onPress={handleSetToday}
-          className="flex-1 bg-primary-light/50 py-3 rounded-xl items-center active:bg-primary-light active:scale-95 transition-all"
+          className="w-full bg-primary-light/50 py-3 rounded-xl items-center active:bg-primary-light active:scale-95 transition-all"
         >
           <Text className="text-primary-main font-bold font-main text-sm">
-            امروز
+            درج تاریخ امروز
           </Text>
         </Pressable>
       </View>

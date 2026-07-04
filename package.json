@@ -9,6 +9,7 @@
     "dayjs": "^1.11.21",
     "drizzle-orm": "^0.45.2",
     "expo": "~56.0.12",
+    "expo-clipboard": "~56.0.4",
     "expo-constants": "~56.0.18",
     "expo-device": "~56.0.4",
     "expo-drizzle-studio-plugin": "^0.2.1",
