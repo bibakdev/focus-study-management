@@ -1,7 +1,14 @@
 import { db } from '@/core/database/db';
-import { groupDates, groups, members, studyLogs } from '@/core/database/schema';
+import {
+  groupDates,
+  groups,
+  members,
+  memberTargets,
+  studyLogs
+} from '@/core/database/schema';
+import { getPersianWeekday } from '@/core/utils/date';
 import { generateUUID } from '@/core/utils/uuid';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, asc, desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
@@ -12,19 +19,34 @@ interface BananaTabContainerProps {
   groupId: string;
 }
 
+const getPersianDateStr = (date: Date) => {
+  try {
+    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
+      calendar: 'persian',
+      timeZone: 'Asia/Tehran',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const parts = formatter.formatToParts(date);
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value.padStart(2, '0');
+    const day = parts.find((p) => p.type === 'day')?.value.padStart(2, '0');
+    return `${year}/${month}/${day}`;
+  } catch (e) {
+    return '1400/01/01';
+  }
+};
+
 export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
-  // ۱. دریافت اطلاعات گروه برای تنظیمات چالش و ذخیره لینک تلگرام
   const { data: groupData } = useLiveQuery(
     db.select().from(groups).where(eq(groups.id, groupId))
   );
 
   const currentGroup = groupData?.[0];
-  const bananaHours = currentGroup
-    ? Math.floor(currentGroup.bananaThreshold / 60)
-    : 2;
+  const bananaThreshold = currentGroup ? currentGroup.bananaThreshold : 120;
   const maxEggplants = currentGroup ? currentGroup.maxEggplantsAllowed : 3;
 
-  // ۲. منطق مربوط به انتخاب تاریخ
   const [activeDate, setActiveDate] = useState<string | null>(null);
   const [activeDateId, setActiveDateId] = useState<string | null>(null);
   const [isEditingDate, setIsEditingDate] = useState<boolean>(false);
@@ -37,6 +59,9 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
       .orderBy(desc(groupDates.createdAt))
   );
 
+  const [bananaResults, setBananaResults] = useState<RankingItem[]>([]);
+  const [streakResults, setStreakResults] = useState<RankingItem[]>([]);
+
   useEffect(() => {
     if (savedDates && savedDates.length > 0 && !activeDate && !isEditingDate) {
       setActiveDate(savedDates[0].persianDate);
@@ -44,64 +69,181 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
     }
   }, [savedDates, activeDate, isEditingDate]);
 
-  // ۳. واکشی لاگ‌های تاریخ فعلی و کاربران برای محاسبه موز و استمرار
-  const { data: currentDayLogs } = useLiveQuery(
-    db
-      .select()
-      .from(studyLogs)
-      .where(eq(studyLogs.groupDateId, activeDateId || ''))
-  );
-
-  const { data: groupMembers } = useLiveQuery(
-    db.select().from(members).where(eq(members.groupId, groupId))
-  );
-
-  const [bananaResults, setBananaResults] = useState<RankingItem[]>([]);
-  const [streakResults, setStreakResults] = useState<RankingItem[]>([]);
-
   useEffect(() => {
-    if (groupMembers && currentGroup) {
-      const activeBananaMembers = groupMembers.filter(
-        (m) => m.inBananaChallenge
-      );
+    if (!activeDateId || !currentGroup || !activeDate) {
+      setBananaResults([]);
+      setStreakResults([]);
+      return;
+    }
 
-      // محاسبه تعداد موزهای دریافت شده
-      const bResults: RankingItem[] = [];
-      activeBananaMembers.forEach((m) => {
-        const log = currentDayLogs?.find((l) => l.memberId === m.id);
-        const minutes = log ? log.studyMinutes : 0;
-        const bananasEarned = Math.floor(
-          minutes / currentGroup.bananaThreshold
+    const fetchBananaData = async () => {
+      try {
+        const allMembers = await db
+          .select()
+          .from(members)
+          .where(eq(members.groupId, groupId));
+        const allTargets = await db
+          .select()
+          .from(memberTargets)
+          .where(eq(memberTargets.groupId, groupId));
+
+        const allDates = await db
+          .select()
+          .from(groupDates)
+          .where(eq(groupDates.groupId, groupId))
+          .orderBy(asc(groupDates.persianDate));
+
+        const allHistoricalLogs = await db.select().from(studyLogs);
+
+        const weekdayStr = getPersianWeekday(activeDate);
+        const bResults: RankingItem[] = [];
+        const sResults: RankingItem[] = [];
+
+        const targetDateIndex = allDates.findIndex(
+          (d) => d.id === activeDateId
         );
+        const datesUpToActive =
+          targetDateIndex >= 0 ? allDates.slice(0, targetDateIndex + 1) : [];
 
-        if (bananasEarned > 0) {
+        for (const m of allMembers) {
+          const isChallenging =
+            m.inBananaChallenge === true || m.inBananaChallenge === 1;
+
+          if (!isChallenging) continue;
+
+          const memberJoinPersian = getPersianDateStr(new Date(m.joinedAt));
+
+          const validDates = datesUpToActive.filter((d) => {
+            if (d.id === activeDateId) return true;
+            if (d.persianDate >= memberJoinPersian) return true;
+            return allHistoricalLogs.some(
+              (l) => l.memberId === m.id && l.groupDateId === d.id
+            );
+          });
+
+          let consecutiveEggplants = 0;
+          let eliminatedDateId: string | null = null;
+
+          for (const d of validDates) {
+            const log = allHistoricalLogs.find(
+              (l) => l.memberId === m.id && l.groupDateId === d.id
+            );
+            const mins = log ? log.studyMinutes : 0;
+
+            if (mins < currentGroup.bananaThreshold) {
+              consecutiveEggplants++;
+            } else {
+              consecutiveEggplants = 0;
+            }
+
+            if (consecutiveEggplants >= currentGroup.maxEggplantsAllowed) {
+              eliminatedDateId = d.id;
+              break;
+            }
+          }
+
+          const wasEliminatedBefore =
+            eliminatedDateId !== null && eliminatedDateId !== activeDateId;
+          const getsEliminatedToday = eliminatedDateId === activeDateId;
+
+          if (wasEliminatedBefore) continue;
+
+          const todayLog = allHistoricalLogs.find(
+            (l) => l.memberId === m.id && l.groupDateId === activeDateId
+          );
+          const todayMinutes = todayLog ? todayLog.studyMinutes : 0;
+
+          if (todayMinutes === 0 && !getsEliminatedToday) continue;
+
+          if (m.activeStreak > 0 && !getsEliminatedToday) {
+            sResults.push({
+              id: m.id,
+              name: m.name,
+              timeMinutes: 0,
+              value: m.activeStreak
+            });
+          }
+
+          const targetData = allTargets.find((t) => t.memberId === m.id);
+          let todayTarget = 120;
+
+          if (targetData) {
+            if (targetData.targetType === 'FIXED') {
+              todayTarget = targetData.defaultMinutes;
+            } else {
+              switch (weekdayStr) {
+                case 'شنبه':
+                  todayTarget = targetData.saturdayMinutes;
+                  break;
+                case 'یکشنبه':
+                  todayTarget = targetData.sundayMinutes;
+                  break;
+                case 'دوشنبه':
+                  todayTarget = targetData.mondayMinutes;
+                  break;
+                case 'سه‌شنبه':
+                  todayTarget = targetData.tuesdayMinutes;
+                  break;
+                case 'چهارشنبه':
+                  todayTarget = targetData.wednesdayMinutes;
+                  break;
+                case 'پنج‌شنبه':
+                  todayTarget = targetData.thursdayMinutes;
+                  break;
+                case 'جمعه':
+                  todayTarget = targetData.fridayMinutes;
+                  break;
+              }
+            }
+          }
+
+          let statusEmoji = '🍆';
+          let score = 1;
+
+          if (getsEliminatedToday) {
+            statusEmoji = '❌';
+            score = 0;
+          } else if (todayMinutes >= todayTarget) {
+            statusEmoji = '✅';
+            score = 3;
+          } else if (todayMinutes >= currentGroup.bananaThreshold) {
+            statusEmoji = '🍌';
+            score = 2;
+          } else {
+            statusEmoji = '🍆';
+            score = 1;
+          }
+
           bResults.push({
             id: m.id,
             name: m.name,
-            timeMinutes: 0, // استفاده نمی‌شود اما برای تایپ الزامی است
-            value: bananasEarned
+            timeMinutes: todayMinutes,
+            statusEmoji: statusEmoji,
+            sortScore: score,
+            targetMinutes: todayTarget // 🔴 تارگت به درستی ارسال شد
           });
         }
-      });
-      bResults.sort((a, b) => (b.value || 0) - (a.value || 0));
-      setBananaResults(bResults);
 
-      // محاسبه استمرارها
-      const sResults: RankingItem[] = [];
-      activeBananaMembers.forEach((m) => {
-        if (m.activeStreak > 0) {
-          sResults.push({
-            id: m.id,
-            name: m.name,
-            timeMinutes: 0,
-            value: m.activeStreak
-          });
-        }
-      });
-      sResults.sort((a, b) => (b.value || 0) - (a.value || 0));
-      setStreakResults(sResults);
-    }
-  }, [groupMembers, currentDayLogs, currentGroup]);
+        // 🔴 مرتب‌سازی: اولویت با مدال، سپس تارگت شخص (از بزرگ به کوچک)
+        bResults.sort((a, b) => {
+          if (b.sortScore !== a.sortScore) {
+            return (b.sortScore || 0) - (a.sortScore || 0);
+          }
+          // سورت بر اساس تارگت
+          return (b.targetMinutes || 0) - (a.targetMinutes || 0);
+        });
+
+        sResults.sort((a, b) => (b.value || 0) - (a.value || 0));
+
+        setBananaResults(bResults);
+        setStreakResults(sResults);
+      } catch (error) {
+        console.error('Error fetching banana tab data:', error);
+      }
+    };
+
+    fetchBananaData();
+  }, [activeDateId, currentGroup, activeDate, groupId]);
 
   const handleConfirmDate = async (date: string) => {
     try {
@@ -138,12 +280,15 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
     setActiveDateId(null);
   };
 
-  const handleUpdateSettings = async (hours: number, eggplants: number) => {
+  const handleUpdateSettings = async (
+    thresholdMinutes: number,
+    eggplants: number
+  ) => {
     try {
       await db
         .update(groups)
         .set({
-          bananaThreshold: hours * 60,
+          bananaThreshold: thresholdMinutes,
           maxEggplantsAllowed: eggplants
         })
         .where(eq(groups.id, groupId));
@@ -166,7 +311,7 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
 
   return (
     <BananaTabPresentational
-      bananaHours={bananaHours}
+      bananaThreshold={bananaThreshold}
       maxEggplants={maxEggplants}
       onUpdateSettings={handleUpdateSettings}
       selectedDate={activeDate}

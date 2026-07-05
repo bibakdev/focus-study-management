@@ -20,10 +20,13 @@ const TELEGRAM_CHAT_ID = '8586178318';
 export interface RankingItem {
   id: string;
   name: string;
-  timeMinutes: number; // برای پشتیبانی از رکوردهای زمانی
+  timeMinutes: number;
   oldRecordMinutes?: number;
-  value?: number; // مقدار عددی جدید (مثل موز یا روز)
-  oldValue?: number; // رکورد قبلی عددی
+  value?: number;
+  oldValue?: number;
+  statusEmoji?: string;
+  sortScore?: number;
+  targetMinutes?: number;
 }
 
 interface RankingSectionProps {
@@ -36,8 +39,8 @@ interface RankingSectionProps {
   filterActive?: boolean;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
-  displayType?: 'time' | 'number'; // نوع نمایش
-  valueSuffix?: string; // پسوند مقدار عددی (مثلاً "موز" یا "روز")
+  displayType?: 'time' | 'number';
+  valueSuffix?: string;
 }
 
 const formatTime = (minutes: number) => {
@@ -119,30 +122,40 @@ export function RankingSection({
   const buttonBg = isBlue ? 'bg-indigo-100' : 'bg-orange-100';
   const buttonText = isBlue ? 'text-indigo-600' : 'text-orange-600';
 
-  const generateTextLines = () => {
+  // 🔴 تابع تولید متن حالا سایز بسته را هم می‌گیرد تا بتواند فاصله‌ها را هوشمند اعمال کند
+  const generateTextLines = (chunkSize?: number) => {
     const headerTitle = copyTitle || `${emoji} ${title}`;
     let lines = [headerTitle, '➖️➖️➖️➖️➖️➖️➖️➖️'];
 
     data.forEach((item, index) => {
       const rank = index + 1;
+      const isBananaRanking =
+        item.statusEmoji && item.targetMinutes !== undefined;
 
-      const timeStr =
+      let timeStr =
         displayType === 'number'
           ? `${item.value || 0} ${valueSuffix}`.trim()
           : formatTime(item.timeMinutes);
 
       let prefix = '';
-      if (rank === 1) prefix = '🥇';
-      else if (rank === 2) prefix = '🥈';
-      else if (rank === 3) prefix = '🥉';
-      else prefix = ` ${rank}. `;
+      if (isBananaRanking) {
+        prefix = `${item.statusEmoji} `;
+      } else {
+        if (rank === 1) prefix = '🥇';
+        else if (rank === 2) prefix = '🥈';
+        else if (rank === 3) prefix = '🥉';
+        else prefix = ` ${rank}. `;
+      }
 
       const hasOldValue =
         displayType === 'number'
           ? item.oldValue !== undefined
           : item.oldRecordMinutes !== undefined;
 
-      if (hasOldValue) {
+      if (isBananaRanking) {
+        const targetStr = formatTime(item.targetMinutes!);
+        lines.push(`${prefix}${item.name} - ${timeStr} (${targetStr})`);
+      } else if (hasOldValue) {
         const oldTimeStr =
           displayType === 'number'
             ? `${item.oldValue || 0} ${valueSuffix}`.trim()
@@ -153,8 +166,25 @@ export function RankingSection({
         lines.push(`${prefix}${item.name} - ${timeStr}`);
       }
 
-      if (index < data.length - 1) {
-        lines.push('');
+      // 🔴 منطق هوشمند فاصله‌گذاری بر اساس طول بسته‌ها
+      if (isBananaRanking) {
+        const nextItem = data[index + 1];
+        if (chunkSize === 100) {
+          // در بسته‌های 100 تایی: بین تمامی آیتم‌ها خط خالی می‌اندازد تا یکدست شود
+          if (index < data.length - 1) {
+            lines.push('');
+          }
+        } else {
+          // در بسته‌های بزرگتر (مثل 500 تایی): فقط هنگام عوض شدن ایموجی (گروه) خط خالی می‌اندازد
+          if (nextItem && nextItem.sortScore !== item.sortScore) {
+            lines.push('');
+          }
+        }
+      } else {
+        // برای لیست‌های دیگر (مثل قهرمانان و استمرار)
+        if (index < data.length - 1) {
+          lines.push('');
+        }
       }
     });
 
@@ -201,7 +231,7 @@ export function RankingSection({
   };
 
   const createChunks = (maxLength: number): string[] => {
-    const lines = generateTextLines();
+    const lines = generateTextLines(maxLength);
     const newChunks: string[] = [];
     let currentChunk = '';
 
@@ -481,8 +511,9 @@ export function RankingSection({
                       ? '🥉'
                       : '▫️';
 
-                const timeStr =
-                  displayType === 'number'
+                const timeStr = item.statusEmoji
+                  ? `${item.statusEmoji} ${formatTime(item.timeMinutes)}`
+                  : displayType === 'number'
                     ? `${item.value || 0} ${valueSuffix}`.trim()
                     : formatTime(item.timeMinutes);
 
@@ -650,7 +681,6 @@ export function RankingSection({
             className="max-h-[400px] mt-2"
             showsVerticalScrollIndicator={false}
           >
-            {/* آیتم ثابت برای خط جداکننده */}
             <View className="flex-row items-center justify-between p-4 mb-3 rounded-2xl bg-indigo-50/50 border border-indigo-100">
               <Pressable
                 onPress={async () => {
@@ -672,7 +702,6 @@ export function RankingSection({
               </Text>
             </View>
 
-            {/* لیست بسته‌های تولید شده */}
             {chunks.map((chunk, index) => {
               const isCopied = copiedChunks.has(index);
               return (

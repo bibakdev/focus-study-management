@@ -4,9 +4,9 @@ import { DateSelector } from '../../components/DateSelector';
 import { RankingItem, RankingSection } from '../../components/RankingSection';
 
 interface BananaTabPresentationalProps {
-  bananaHours: number;
+  bananaThreshold: number;
   maxEggplants: number;
-  onUpdateSettings: (hours: number, eggplants: number) => void;
+  onUpdateSettings: (thresholdMinutes: number, eggplants: number) => void;
   selectedDate: string | null;
   onConfirmDate: (date: string) => void;
   onEditDate: () => void;
@@ -17,7 +17,7 @@ interface BananaTabPresentationalProps {
 }
 
 export function BananaTabPresentational({
-  bananaHours,
+  bananaThreshold,
   maxEggplants,
   onUpdateSettings,
   selectedDate,
@@ -35,14 +35,12 @@ export function BananaTabPresentational({
         contentContainerStyle={{ paddingBottom: 120 }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* ۱. تنظیمات چالش */}
         <BananaChallengeSettings
-          initialBananaHours={bananaHours}
+          initialBananaThreshold={bananaThreshold}
           initialMaxEggplants={maxEggplants}
           onSave={onUpdateSettings}
         />
 
-        {/* ۲. بخش تاریخ */}
         <View className="mt-4">
           <DateSelector
             selectedDate={selectedDate}
@@ -52,7 +50,6 @@ export function BananaTabPresentational({
           />
         </View>
 
-        {/* ۳. نتایج چالش و استمرارها */}
         {selectedDate && (
           <View className="mt-6">
             <RankingSection
@@ -61,8 +58,6 @@ export function BananaTabPresentational({
               emoji="🍌"
               theme="blue"
               data={bananaResults}
-              displayType="number"
-              valueSuffix="موز"
               initialTopicLink={topicLink}
               onTopicLinkSave={onTopicLinkSave}
             />
