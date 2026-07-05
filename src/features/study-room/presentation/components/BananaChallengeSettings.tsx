@@ -20,7 +20,8 @@ export function BananaChallengeSettings({
   initialMaxEggplants,
   onSave
 }: BananaChallengeSettingsProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // پیش‌فرض بسته شد
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // تبدیل دقیقه به ساعت و دقیقه برای نمایش
   const [bananaH, setBananaH] = useState(
@@ -115,12 +116,13 @@ export function BananaChallengeSettings({
           {/* ردیف دوم: تعداد بادمجان برای حذف */}
           <View className="flex-row justify-between items-center">
             <TextInput
-              className="w-[90px] h-11 border border-surface-muted rounded-xl bg-surface-main text-center text-text-primary font-bold font-main focus:border-primary-main focus:bg-primary-light/10 transition-colors"
+              className="w-[90px] h-11 border border-surface-muted rounded-xl bg-surface-main text-text-primary font-bold font-main focus:border-primary-main focus:bg-primary-light/10 transition-colors"
               style={
                 {
                   outlineStyle: 'none',
                   paddingVertical: 0,
-                  lineHeight: 24
+                  lineHeight: 24,
+                  textAlign: 'center' // تضمین وسط‌چین شدن متن
                 } as any
               }
               keyboardType="numeric"
