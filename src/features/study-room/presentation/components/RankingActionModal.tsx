@@ -120,7 +120,7 @@ export function RankingActionModal({
                     onChangeText={setTopicLink}
                   />
                   <Text className="text-slate-400 text-[10px] font-main mt-2 text-right">
-                    لینک یکی از پیام‌های داخل تاپیک مد نظر را پیست کنید.
+                    لینک یکی از پیام‌های داخل تاپیک یا گروه مد نظر را پیست کنید.
                   </Text>
                 </Animated.View>
               )}

@@ -4,8 +4,8 @@ import { Alert } from 'react-native';
 import { RankingItem } from '../components/RankingSection';
 
 // 🔴 اطلاعات اختصاصی ربات و چت‌ آیدی خود را در این قسمت وارد کنید
-const TELEGRAM_BOT_TOKEN = 'YOUR_BOT_TOKEN_HERE';
-const TELEGRAM_CHAT_ID = 'YOUR_USER_ID_HERE';
+const TELEGRAM_BOT_TOKEN = '7770369278:AAFscQ98y0cd6NEepyfrKzQOIC7jya5POC0';
+const TELEGRAM_CHAT_ID = '8586178318';
 
 export const formatTime = (minutes: number) => {
   const h = Math.floor(minutes / 60);
@@ -15,9 +15,18 @@ export const formatTime = (minutes: number) => {
   return `${m}m`;
 };
 
+// تابع استخراج خودکار Chat ID و Topic ID از لینک تلگرام
 export function parseTelegramLink(
   link: string
-): { chatId: string; topicId: string } | null {
+): { chatId: string; topicId?: string } | null {
+  const privateTopicMatch = link.match(/t\.me\/c\/(\d+)\/(\d+)\/(\d+)/);
+  if (privateTopicMatch) {
+    return {
+      chatId: `-100${privateTopicMatch[1]}`,
+      topicId: privateTopicMatch[2]
+    };
+  }
+
   const privateMatch = link.match(/t\.me\/c\/(\d+)\/(\d+)/);
   if (privateMatch) {
     return {
@@ -26,9 +35,16 @@ export function parseTelegramLink(
     };
   }
 
+  const publicTopicMatch = link.match(/t\.me\/([a-zA-Z0-9_]+)\/(\d+)\/(\d+)/);
+  if (publicTopicMatch && publicTopicMatch[1].toLowerCase() !== 'c') {
+    return {
+      chatId: `@${publicTopicMatch[1]}`,
+      topicId: publicTopicMatch[2]
+    };
+  }
+
   const publicMatch = link.match(/t\.me\/([a-zA-Z0-9_]+)\/(\d+)/);
-  if (publicMatch) {
-    if (publicMatch[1].toLowerCase() === 'c') return null;
+  if (publicMatch && publicMatch[1].toLowerCase() !== 'c') {
     return {
       chatId: `@${publicMatch[1]}`,
       topicId: publicMatch[2]
@@ -114,7 +130,7 @@ export function useRankingActions(
     ) {
       Alert.alert(
         'تنظیمات ناقص',
-        'لطفاً ابتدا توکن ربات و چت‌ آی‌دی خود را در هوک وارد کنید.'
+        'لطفاً ابتدا توکن ربات و چت‌ آی‌دی خود را در فایل هوک وارد کنید.'
       );
       return;
     }
@@ -139,6 +155,7 @@ export function useRankingActions(
     topicId?: string
   ) => {
     let hasError = false;
+    let currentTopicId = topicId;
 
     for (let i = 0; i < chunkList.length; i++) {
       try {
@@ -147,24 +164,65 @@ export function useRankingActions(
           text: chunkList[i]
         };
 
-        if (topicId) {
-          bodyData.message_thread_id = topicId;
+        if (currentTopicId) {
+          bodyData.message_thread_id = currentTopicId;
         }
 
-        const response = await fetch(
+        let response = await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
           {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+              'Content-Type': 'application/json'
+            },
             body: JSON.stringify(bodyData)
           }
         );
 
         if (!response.ok) {
-          hasError = true;
           const errorData = await response.json();
-          console.error('Telegram API Error on chunk', i + 1, errorData);
-          break;
+
+          if (
+            errorData.description?.includes('message thread not found') &&
+            currentTopicId
+          ) {
+            delete bodyData.message_thread_id;
+            currentTopicId = undefined; // پاک کردن تاپیک برای تلاش مجدد
+
+            response = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(bodyData)
+              }
+            );
+
+            if (!response.ok) {
+              const retryErrorData = await response.json();
+              console.error(
+                'Telegram API Error on retry',
+                i + 1,
+                retryErrorData
+              );
+              Alert.alert(
+                'خطا در ارسال',
+                `ارسال کامل نشد.\n${retryErrorData.description || ''}`
+              );
+              hasError = true;
+              break;
+            }
+          } else {
+            console.error('Telegram API Error on chunk', i + 1, errorData);
+            Alert.alert(
+              'خطا در ارسال',
+              `ارسال کامل نشد. مطمئن شوید ربات در گروه مدیر است.\n${errorData.description || ''}`
+            );
+            hasError = true;
+            break;
+          }
         }
 
         if (i < chunkList.length - 1) {
@@ -173,17 +231,13 @@ export function useRankingActions(
       } catch (error) {
         hasError = true;
         console.error('Network Error:', error);
+        Alert.alert('خطا در ارتباط', 'مشکلی در ارتباط با سرور تلگرام پیش آمد.');
         break;
       }
     }
 
-    if (hasError) {
-      Alert.alert(
-        'خطا در ارسال',
-        'ارسال کامل نشد. لطفاً وضعیت اینترنت، لینک تاپیک و ربات را بررسی کنید.'
-      );
-    } else {
-      const destText = topicId ? 'تاپیک مشخص شده' : 'پی‌وی شما';
+    if (!hasError) {
+      const destText = topicId ? 'گروه/تاپیک مشخص شده' : 'پی‌وی شما';
       Alert.alert(
         'ارسال موفق',
         `لیست شما در قالب ${chunkList.length} بسته با موفقیت به ${destText} ارسال شد.`
@@ -217,14 +271,13 @@ export function useRankingActions(
         if (!parsed) {
           Alert.alert(
             'لینک نامعتبر',
-            'لطفاً یک لینک معتبر از یک پیام داخل تاپیک تلگرامی پیست کنید.'
+            'لطفاً یک لینک معتبر از تلگرام پیست کنید.'
           );
           return;
         }
         targetChatId = parsed.chatId;
         targetTopicId = parsed.topicId;
 
-        // ذخیره‌سازی لینک معتبر برای استفاده‌های بعدی
         if (onTopicLinkSave && topicLink !== initialTopicLink) {
           onTopicLinkSave(topicLink);
         }
