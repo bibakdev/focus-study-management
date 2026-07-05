@@ -112,6 +112,7 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
           if (!isChallenging) continue;
 
           const memberJoinPersian = getPersianDateStr(new Date(m.joinedAt));
+          const targetData = allTargets.find((t) => t.memberId === m.id);
 
           const validDates = datesUpToActive.filter((d) => {
             if (d.id === activeDateId) return true;
@@ -124,21 +125,76 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
           let consecutiveEggplants = 0;
           let eliminatedDateId: string | null = null;
 
+          let maxHistoricalStreak = 0;
+          let currentStreak = 0;
+
+          // 1. لوپ بررسی تاریخ‌ها برای استخراج اطلاعات موز و استمرار
           for (const d of validDates) {
             const log = allHistoricalLogs.find(
               (l) => l.memberId === m.id && l.groupDateId === d.id
             );
             const mins = log ? log.studyMinutes : 0;
 
+            // محاسبه تارگت برای این روز خاص
+            let dTarget = 120;
+            if (targetData) {
+              if (targetData.targetType === 'FIXED') {
+                dTarget = targetData.defaultMinutes;
+              } else {
+                const wd = getPersianWeekday(d.persianDate);
+                switch (wd) {
+                  case 'شنبه':
+                    dTarget = targetData.saturdayMinutes;
+                    break;
+                  case 'یکشنبه':
+                    dTarget = targetData.sundayMinutes;
+                    break;
+                  case 'دوشنبه':
+                    dTarget = targetData.mondayMinutes;
+                    break;
+                  case 'سه‌شنبه':
+                    dTarget = targetData.tuesdayMinutes;
+                    break;
+                  case 'چهارشنبه':
+                    dTarget = targetData.wednesdayMinutes;
+                    break;
+                  case 'پنج‌شنبه':
+                    dTarget = targetData.thursdayMinutes;
+                    break;
+                  case 'جمعه':
+                    dTarget = targetData.fridayMinutes;
+                    break;
+                }
+              }
+            }
+
+            // قانون استمرار: فقط زمان بزرگتر مساوی تارگت (✅)
+            if (mins >= dTarget) {
+              currentStreak++;
+            } else {
+              currentStreak = 0;
+            }
+
+            // آپدیت بیشترین رکورد قبل از تاریخ انتخاب شده
+            if (d.persianDate < activeDate) {
+              maxHistoricalStreak = Math.max(
+                maxHistoricalStreak,
+                currentStreak
+              );
+            }
+
+            // قانون بادمجان و چالش موز
             if (mins < currentGroup.bananaThreshold) {
               consecutiveEggplants++;
             } else {
               consecutiveEggplants = 0;
             }
 
-            if (consecutiveEggplants >= currentGroup.maxEggplantsAllowed) {
+            if (
+              consecutiveEggplants >= currentGroup.maxEggplantsAllowed &&
+              eliminatedDateId === null
+            ) {
               eliminatedDateId = d.id;
-              break;
             }
           }
 
@@ -148,25 +204,13 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
 
           if (wasEliminatedBefore) continue;
 
+          // بررسی وضعیت امروز
           const todayLog = allHistoricalLogs.find(
             (l) => l.memberId === m.id && l.groupDateId === activeDateId
           );
           const todayMinutes = todayLog ? todayLog.studyMinutes : 0;
 
-          if (todayMinutes === 0 && !getsEliminatedToday) continue;
-
-          if (m.activeStreak > 0 && !getsEliminatedToday) {
-            sResults.push({
-              id: m.id,
-              name: m.name,
-              timeMinutes: 0,
-              value: m.activeStreak
-            });
-          }
-
-          const targetData = allTargets.find((t) => t.memberId === m.id);
           let todayTarget = 120;
-
           if (targetData) {
             if (targetData.targetType === 'FIXED') {
               todayTarget = targetData.defaultMinutes;
@@ -197,6 +241,26 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
             }
           }
 
+          if (todayMinutes === 0 && !getsEliminatedToday) continue;
+
+          // 2. درج در آرایه استمرارها در صورت کسب تیک سبز امروز ✅
+          const gotCheckmarkToday = todayMinutes >= todayTarget;
+
+          if (gotCheckmarkToday) {
+            // اگر استمرار الان از بیشترین استمراری که قبلا داشته بیشتر باشد، یعنی رکورد زده است.
+            const isRecordBroken =
+              currentStreak > maxHistoricalStreak && currentStreak > 1;
+
+            sResults.push({
+              id: m.id,
+              name: m.name,
+              timeMinutes: 0,
+              value: currentStreak,
+              streakStatusEmoji: isRecordBroken ? '🔥' : '✅'
+            });
+          }
+
+          // 3. درج در آرایه چالش موز
           let statusEmoji = '🍆';
           let score = 1;
 
@@ -220,19 +284,19 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
             timeMinutes: todayMinutes,
             statusEmoji: statusEmoji,
             sortScore: score,
-            targetMinutes: todayTarget // 🔴 تارگت به درستی ارسال شد
+            targetMinutes: todayTarget
           });
         }
 
-        // 🔴 مرتب‌سازی: اولویت با مدال، سپس تارگت شخص (از بزرگ به کوچک)
+        // مرتب‌سازی چالش موزی
         bResults.sort((a, b) => {
           if (b.sortScore !== a.sortScore) {
             return (b.sortScore || 0) - (a.sortScore || 0);
           }
-          // سورت بر اساس تارگت
           return (b.targetMinutes || 0) - (a.targetMinutes || 0);
         });
 
+        // مرتب‌سازی استمرارها از بزرگ به کوچک
         sResults.sort((a, b) => (b.value || 0) - (a.value || 0));
 
         setBananaResults(bResults);

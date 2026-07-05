@@ -3,8 +3,9 @@ export interface Member {
   groupId: string;
   name: string;
   isActive: boolean;
-  inBananaChallenge: boolean; // فیلد جدید
+  inBananaChallenge: boolean;
   activeStreak: number;
+  highestActiveStreak: number;
   absenceDays: number;
   consecutiveEggplants: number;
   personalRecordMinutes: number;

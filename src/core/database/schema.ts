@@ -39,6 +39,7 @@ export const members = sqliteTable(
       .notNull()
       .default(true),
     activeStreak: integer('active_streak').notNull().default(0),
+    highestActiveStreak: integer('highest_active_streak').notNull().default(0),
     absenceDays: integer('absence_days').notNull().default(0),
     consecutiveEggplants: integer('consecutive_eggplants').notNull().default(0),
     personalRecordMinutes: integer('personal_record_minutes')

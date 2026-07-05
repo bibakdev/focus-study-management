@@ -25,6 +25,7 @@ export interface RankingItem {
   value?: number;
   oldValue?: number;
   statusEmoji?: string;
+  streakStatusEmoji?: string; // برای نمایش ✅ یا 🔥 استمرار
   sortScore?: number;
   targetMinutes?: number;
 }
@@ -122,7 +123,6 @@ export function RankingSection({
   const buttonBg = isBlue ? 'bg-indigo-100' : 'bg-orange-100';
   const buttonText = isBlue ? 'text-indigo-600' : 'text-orange-600';
 
-  // 🔴 تابع تولید متن حالا سایز بسته را هم می‌گیرد تا بتواند فاصله‌ها را هوشمند اعمال کند
   const generateTextLines = (chunkSize?: number) => {
     const headerTitle = copyTitle || `${emoji} ${title}`;
     let lines = [headerTitle, '➖️➖️➖️➖️➖️➖️➖️➖️'];
@@ -131,6 +131,7 @@ export function RankingSection({
       const rank = index + 1;
       const isBananaRanking =
         item.statusEmoji && item.targetMinutes !== undefined;
+      const isStreakRanking = item.streakStatusEmoji !== undefined;
 
       let timeStr =
         displayType === 'number'
@@ -152,7 +153,11 @@ export function RankingSection({
           ? item.oldValue !== undefined
           : item.oldRecordMinutes !== undefined;
 
-      if (isBananaRanking) {
+      // بررسی نوع و تولید متن متناسب
+      if (isStreakRanking) {
+        const valStr = `${item.value || 0}d ${item.streakStatusEmoji}`;
+        lines.push(`${prefix}${item.name} - ${valStr}`);
+      } else if (isBananaRanking) {
         const targetStr = formatTime(item.targetMinutes!);
         lines.push(`${prefix}${item.name} - ${timeStr} (${targetStr})`);
       } else if (hasOldValue) {
@@ -166,25 +171,15 @@ export function RankingSection({
         lines.push(`${prefix}${item.name} - ${timeStr}`);
       }
 
-      // 🔴 منطق هوشمند فاصله‌گذاری بر اساس طول بسته‌ها
       if (isBananaRanking) {
         const nextItem = data[index + 1];
         if (chunkSize === 100) {
-          // در بسته‌های 100 تایی: بین تمامی آیتم‌ها خط خالی می‌اندازد تا یکدست شود
-          if (index < data.length - 1) {
-            lines.push('');
-          }
+          if (index < data.length - 1) lines.push('');
         } else {
-          // در بسته‌های بزرگتر (مثل 500 تایی): فقط هنگام عوض شدن ایموجی (گروه) خط خالی می‌اندازد
-          if (nextItem && nextItem.sortScore !== item.sortScore) {
-            lines.push('');
-          }
+          if (nextItem && nextItem.sortScore !== item.sortScore) lines.push('');
         }
       } else {
-        // برای لیست‌های دیگر (مثل قهرمانان و استمرار)
-        if (index < data.length - 1) {
-          lines.push('');
-        }
+        if (index < data.length - 1) lines.push('');
       }
     });
 
@@ -312,9 +307,7 @@ export function RankingSection({
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
           {
             method: 'POST',
-            headers: {
-              'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(bodyData)
           }
         );
@@ -333,9 +326,7 @@ export function RankingSection({
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
               {
                 method: 'POST',
-                headers: {
-                  'Content-Type': 'application/json'
-                },
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify(bodyData)
               }
             );
@@ -485,6 +476,8 @@ export function RankingSection({
                 const isSecond = rank === 2;
                 const isThird = rank === 3;
 
+                const isStreakRanking = item.streakStatusEmoji !== undefined;
+
                 const cardBg = isFirst
                   ? 'bg-amber-50/30 border-amber-200'
                   : isSecond
@@ -511,11 +504,13 @@ export function RankingSection({
                       ? '🥉'
                       : '▫️';
 
-                const timeStr = item.statusEmoji
-                  ? `${item.statusEmoji} ${formatTime(item.timeMinutes)}`
-                  : displayType === 'number'
-                    ? `${item.value || 0} ${valueSuffix}`.trim()
-                    : formatTime(item.timeMinutes);
+                const timeStr = isStreakRanking
+                  ? `${item.value || 0}d ${item.streakStatusEmoji}`
+                  : item.statusEmoji
+                    ? `${item.statusEmoji} ${formatTime(item.timeMinutes)}`
+                    : displayType === 'number'
+                      ? `${item.value || 0} ${valueSuffix}`.trim()
+                      : formatTime(item.timeMinutes);
 
                 const hasOldValue =
                   displayType === 'number'
@@ -533,7 +528,7 @@ export function RankingSection({
                     className={`flex-row justify-between items-center p-3 mb-2 rounded-2xl border ${cardBg}`}
                   >
                     <View className="flex-row items-center">
-                      {hasOldValue ? (
+                      {hasOldValue && !isStreakRanking ? (
                         <View className="flex-row items-center gap-2">
                           <Text
                             className="text-slate-400 text-xs font-bold line-through"

@@ -69,7 +69,6 @@ export function BananaTabPresentational({
               theme="orange"
               data={streakResults}
               displayType="number"
-              valueSuffix="روز"
               initialTopicLink={topicLink}
               onTopicLinkSave={onTopicLinkSave}
             />
