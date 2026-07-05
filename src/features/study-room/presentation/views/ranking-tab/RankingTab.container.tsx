@@ -1,5 +1,5 @@
 import { db } from '@/core/database/db';
-import { groupDates, members, studyLogs } from '@/core/database/schema';
+import { groupDates, groups, members, studyLogs } from '@/core/database/schema';
 import { generateUUID } from '@/core/utils/uuid';
 import { and, desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
@@ -21,8 +21,14 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
   const [recordBreakers, setRecordBreakers] = useState<RankingItem[]>([]);
 
   // تنظیمات فیلتر قهرمانان
-  const [minFilterMinutes, setMinFilterMinutes] = useState<number>(0);
+  const [minFilterMinutes, setMinFilterMinutes] = useState<number>(120);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState<boolean>(false);
+
+  // دریافت اطلاعات گروه برای استخراج لینک ذخیره شده تاپیک
+  const { data: groupData } = useLiveQuery(
+    db.select().from(groups).where(eq(groups.id, groupId))
+  );
+  const currentGroup = groupData?.[0];
 
   const { data: savedDates } = useLiveQuery(
     db
@@ -49,7 +55,6 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
 
     const fetchRankings = async () => {
       try {
-        // دریافت تمام لاگ‌های ثبت شده در این گروه (تاریخ امروز + تمام تاریخ‌های گذشته)
         const allGroupLogs = await db
           .select({
             id: studyLogs.id,
@@ -63,7 +68,6 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
           .innerJoin(groupDates, eq(studyLogs.groupDateId, groupDates.id))
           .where(eq(groupDates.groupId, groupId));
 
-        // تفکیک لاگ‌های امروز از لاگ‌های گذشته
         const todayLogs = allGroupLogs.filter(
           (log) => log.groupDateId === activeDateId
         );
@@ -71,7 +75,6 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
           (log) => log.groupDateId !== activeDateId
         );
 
-        // ۱. لیست قهرمانان (مرتب شده بر اساس تایم امروز)
         const sortedChampions: RankingItem[] = todayLogs
           .sort((a, b) => b.studyMinutes - a.studyMinutes)
           .map((log) => ({
@@ -80,22 +83,18 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
             timeMinutes: log.studyMinutes
           }));
 
-        // ۲. محاسبه رکوردشکنان به صورت پویا (بدون وابستگی به کش دیتابیس)
         const breakers: RankingItem[] = [];
 
         for (const log of todayLogs) {
-          // استخراج تمام تایم‌های قبلی این شخص
           const pastLogs = historicalLogs.filter(
             (l) => l.memberId === log.memberId
           );
 
-          // یافتن بهترین رکورد شخصی در گذشته
           const bestPastRecord =
             pastLogs.length > 0
               ? Math.max(...pastLogs.map((l) => l.studyMinutes))
               : 0;
 
-          // اگر رکوردی در گذشته داشته و تایم امروزش از آن بیشتر شده است
           if (bestPastRecord > 0 && log.studyMinutes > bestPastRecord) {
             breakers.push({
               id: `breaker_${log.id}`,
@@ -106,7 +105,6 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
           }
         }
 
-        // مرتب‌سازی لیست رکوردشکنان بر اساس "میزان پیشرفت" (اختلاف زمان امروز با رکورد قبلی)
         breakers.sort((a, b) => {
           const improvementA = a.timeMinutes - (a.oldRecordMinutes || 0);
           const improvementB = b.timeMinutes - (b.oldRecordMinutes || 0);
@@ -158,7 +156,17 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
     setActiveDateId(null);
   };
 
-  // فیلتر کردن لیست قهرمانان پیش از ارسال به کامپوننت نمایشی
+  const handleTopicLinkSave = async (link: string) => {
+    try {
+      await db
+        .update(groups)
+        .set({ telegramTopicLink: link })
+        .where(eq(groups.id, groupId));
+    } catch (error) {
+      console.error('Error saving topic link', error);
+    }
+  };
+
   const championsToDisplay = allChampions.filter(
     (c) => c.timeMinutes >= minFilterMinutes
   );
@@ -178,6 +186,8 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
       isFilterModalOpen={isFilterModalOpen}
       onOpenFilterModal={() => setIsFilterModalOpen(true)}
       onCloseFilterModal={() => setIsFilterModalOpen(false)}
+      topicLink={currentGroup?.telegramTopicLink || undefined}
+      onTopicLinkSave={handleTopicLinkSave}
     />
   );
 }

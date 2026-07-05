@@ -1,4 +1,3 @@
-// src/app/debug.tsx
 import { db } from '@/core/database/db';
 import {
   groupDates,
@@ -21,7 +20,6 @@ import {
   View
 } from 'react-native';
 
-// تب logs اضافه شد
 type TabType = 'groups' | 'members' | 'targets' | 'dates' | 'logs';
 
 export default function DebugScreen() {
@@ -29,19 +27,19 @@ export default function DebugScreen() {
 
   const [activeTab, setActiveTab] = useState<TabType>('groups');
 
-  // دریافت لایو دیتا از تمام جداول
   const { data: allGroups } = useLiveQuery(db.select().from(groups));
   const { data: allMembers } = useLiveQuery(db.select().from(members));
   const { data: allTargets } = useLiveQuery(db.select().from(memberTargets));
   const { data: allDates } = useLiveQuery(db.select().from(groupDates));
-  const { data: allLogs } = useLiveQuery(db.select().from(studyLogs)); // جدول لاگ‌ها
+  const { data: allLogs } = useLiveQuery(db.select().from(studyLogs));
 
   const [editingGroup, setEditingGroup] = useState<any>(null);
   const [editForm, setEditForm] = useState({
     name: '',
     bananaThreshold: '',
     eggplantThreshold: '',
-    maxEggplantsAllowed: ''
+    maxEggplantsAllowed: '',
+    telegramTopicLink: ''
   });
 
   const handleDelete = async (id: string) => {
@@ -55,7 +53,7 @@ export default function DebugScreen() {
       } else if (activeTab === 'dates') {
         await db.delete(groupDates).where(eq(groupDates.id, id));
       } else if (activeTab === 'logs') {
-        await db.delete(studyLogs).where(eq(studyLogs.id, id)); // حذف لاگ
+        await db.delete(studyLogs).where(eq(studyLogs.id, id));
       }
       Alert.alert('موفق', 'رکورد با موفقیت حذف شد');
     } catch (error) {
@@ -69,7 +67,8 @@ export default function DebugScreen() {
       name: group.name,
       bananaThreshold: String(group.bananaThreshold),
       eggplantThreshold: String(group.eggplantThreshold),
-      maxEggplantsAllowed: String(group.maxEggplantsAllowed)
+      maxEggplantsAllowed: String(group.maxEggplantsAllowed),
+      telegramTopicLink: group.telegramTopicLink || ''
     });
   };
 
@@ -82,7 +81,8 @@ export default function DebugScreen() {
           name: editForm.name,
           bananaThreshold: parseInt(editForm.bananaThreshold) || 120,
           eggplantThreshold: parseInt(editForm.eggplantThreshold) || 30,
-          maxEggplantsAllowed: parseInt(editForm.maxEggplantsAllowed) || 3
+          maxEggplantsAllowed: parseInt(editForm.maxEggplantsAllowed) || 3,
+          telegramTopicLink: editForm.telegramTopicLink || null
         })
         .where(eq(groups.id, editingGroup.id));
 
@@ -98,7 +98,7 @@ export default function DebugScreen() {
     if (activeTab === 'members') return allMembers;
     if (activeTab === 'targets') return allTargets;
     if (activeTab === 'dates') return allDates;
-    if (activeTab === 'logs') return allLogs; // بازگرداندن دیتای لاگ‌ها
+    if (activeTab === 'logs') return allLogs;
     return [];
   };
 
@@ -240,13 +240,22 @@ export default function DebugScreen() {
               }
             />
             <TextInput
-              className="bg-slate-900 text-white p-3 rounded-lg mb-5 font-main text-right"
+              className="bg-slate-900 text-white p-3 rounded-lg mb-3 font-main text-right"
               placeholder="سقف مجاز"
               placeholderTextColor="#64748b"
               keyboardType="numeric"
               value={editForm.maxEggplantsAllowed}
               onChangeText={(text) =>
                 setEditForm({ ...editForm, maxEggplantsAllowed: text })
+              }
+            />
+            <TextInput
+              className="bg-slate-900 text-white p-3 rounded-lg mb-5 font-main text-right"
+              placeholder="لینک تاپیک (اختیاری)"
+              placeholderTextColor="#64748b"
+              value={editForm.telegramTopicLink}
+              onChangeText={(text) =>
+                setEditForm({ ...editForm, telegramTopicLink: text })
               }
             />
 

@@ -7,6 +7,7 @@ export const groups = sqliteTable('groups', {
   bananaThreshold: integer('banana_threshold').notNull().default(120),
   eggplantThreshold: integer('eggplant_threshold').notNull().default(30),
   maxEggplantsAllowed: integer('max_eggplants_allowed').notNull().default(3),
+  telegramTopicLink: text('telegram_topic_link'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 });
 
@@ -78,7 +79,6 @@ export const memberTargets = sqliteTable(
   })
 );
 
-// جدول جدید برای ذخیره زمان مطالعه هر کاربر در یک تاریخ خاص
 export const studyLogs = sqliteTable(
   'study_logs',
   {

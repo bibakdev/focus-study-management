@@ -42,7 +42,9 @@ export function useRankingActions(
   title: string,
   emoji: string,
   data: RankingItem[],
-  copyTitle?: string
+  copyTitle?: string,
+  initialTopicLink?: string,
+  onTopicLinkSave?: (link: string) => void
 ) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -221,6 +223,11 @@ export function useRankingActions(
         }
         targetChatId = parsed.chatId;
         targetTopicId = parsed.topicId;
+
+        // ذخیره‌سازی لینک معتبر برای استفاده‌های بعدی
+        if (onTopicLinkSave && topicLink !== initialTopicLink) {
+          onTopicLinkSave(topicLink);
+        }
       }
 
       setIsModalVisible(false);

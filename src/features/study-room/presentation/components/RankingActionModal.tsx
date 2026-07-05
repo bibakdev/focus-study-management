@@ -10,6 +10,7 @@ interface RankingActionModalProps {
   modalStep: 'size' | 'chunks';
   chunks: string[];
   copiedChunks: Set<number>;
+  initialTopicLink?: string;
   onClose: () => void;
   onBack: () => void;
   onSizeSelect: (
@@ -27,6 +28,7 @@ export function RankingActionModal({
   modalStep,
   chunks,
   copiedChunks,
+  initialTopicLink,
   onClose,
   onBack,
   onSizeSelect,
@@ -35,13 +37,21 @@ export function RankingActionModal({
   const [destination, setDestination] = useState<'PV' | 'TOPIC'>('PV');
   const [topicLink, setTopicLink] = useState('');
 
-  // ریست کردن فرم داخلی مدال زمان بسته شدن
+  // پر کردن خودکار تب و لینک در صورت وجود سابقه
   useEffect(() => {
     if (!visible) {
       setDestination('PV');
       setTopicLink('');
+    } else {
+      if (initialTopicLink) {
+        setDestination('TOPIC');
+        setTopicLink(initialTopicLink);
+      } else {
+        setDestination('PV');
+        setTopicLink('');
+      }
     }
-  }, [visible]);
+  }, [visible, initialTopicLink]);
 
   return (
     <BottomSheetModal

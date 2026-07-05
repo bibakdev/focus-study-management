@@ -16,6 +16,7 @@ expoDb.execSync(`
     banana_threshold INTEGER NOT NULL DEFAULT 120,
     eggplant_threshold INTEGER NOT NULL DEFAULT 30,
     max_eggplants_allowed INTEGER NOT NULL DEFAULT 3,
+    telegram_topic_link TEXT,
     created_at INTEGER NOT NULL
   );
 
@@ -73,7 +74,8 @@ const migrations = [
   'ALTER TABLE members ADD COLUMN in_banana_challenge INTEGER NOT NULL DEFAULT 1;',
   'ALTER TABLE members ADD COLUMN absence_days INTEGER NOT NULL DEFAULT 0;',
   'ALTER TABLE members ADD COLUMN consecutive_eggplants INTEGER NOT NULL DEFAULT 0;',
-  'ALTER TABLE members ADD COLUMN personal_record_minutes INTEGER NOT NULL DEFAULT 0;'
+  'ALTER TABLE members ADD COLUMN personal_record_minutes INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE groups ADD COLUMN telegram_topic_link TEXT;'
 ];
 
 for (const query of migrations) {

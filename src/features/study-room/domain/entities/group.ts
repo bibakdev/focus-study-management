@@ -4,5 +4,6 @@ export interface Group {
   bananaThreshold: number;
   eggplantThreshold: number;
   maxEggplantsAllowed: number;
+  telegramTopicLink?: string | null;
   createdAt: Date;
 }

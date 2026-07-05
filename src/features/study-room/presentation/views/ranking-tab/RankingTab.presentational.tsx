@@ -14,6 +14,8 @@ interface RankingTabPresentationalProps {
   isFilterModalOpen: boolean;
   onOpenFilterModal: () => void;
   onCloseFilterModal: () => void;
+  topicLink?: string;
+  onTopicLinkSave: (link: string) => void;
 }
 
 export function RankingTabPresentational({
@@ -26,7 +28,9 @@ export function RankingTabPresentational({
   onSetFilter,
   isFilterModalOpen,
   onOpenFilterModal,
-  onCloseFilterModal
+  onCloseFilterModal,
+  topicLink,
+  onTopicLinkSave
 }: RankingTabPresentationalProps) {
   return (
     <>
@@ -53,6 +57,8 @@ export function RankingTabPresentational({
                 data={champions}
                 onFilterPress={onOpenFilterModal}
                 filterActive={minFilterMinutes > 0}
+                initialTopicLink={topicLink}
+                onTopicLinkSave={onTopicLinkSave}
               />
 
               <RankingSection
@@ -61,6 +67,8 @@ export function RankingTabPresentational({
                 emoji="🔥"
                 theme="orange"
                 data={recordBreakers}
+                initialTopicLink={topicLink}
+                onTopicLinkSave={onTopicLinkSave}
               />
             </View>
           )}

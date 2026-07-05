@@ -3,6 +3,7 @@ import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
 import { useState } from 'react';
 import {
+  ActivityIndicator,
   Alert,
   Pressable,
   ScrollView,
@@ -31,6 +32,8 @@ interface RankingSectionProps {
   data: RankingItem[];
   onFilterPress?: () => void;
   filterActive?: boolean;
+  initialTopicLink?: string;
+  onTopicLinkSave?: (link: string) => void;
 }
 
 const formatTime = (minutes: number) => {
@@ -41,23 +44,40 @@ const formatTime = (minutes: number) => {
   return `${m}m`;
 };
 
-// تابع استخراج خودکار Chat ID و Topic ID از لینک تلگرام
+// تابع استخراج خودکار Chat ID و Topic ID از لینک تلگرام (پشتیبانی از لینک‌های گروه و تاپیک)
 function parseTelegramLink(
   link: string
-): { chatId: string; topicId: string } | null {
-  // فرمت گروه‌های خصوصی: t.me/c/123456789/55/120
+): { chatId: string; topicId?: string } | null {
+  // 1. حالت اول: لینک ۳ بخشی مربوط به یک پیام داخل تاپیک (t.me/c/chatId/topicId/msgId)
+  const privateTopicMatch = link.match(/t\.me\/c\/(\d+)\/(\d+)\/(\d+)/);
+  if (privateTopicMatch) {
+    return {
+      chatId: `-100${privateTopicMatch[1]}`,
+      topicId: privateTopicMatch[2]
+    };
+  }
+
+  // 2. حالت دوم: لینک ۲ بخشی مربوط به پیام گروه معمولی یا لینک خود تاپیک
   const privateMatch = link.match(/t\.me\/c\/(\d+)\/(\d+)/);
   if (privateMatch) {
     return {
-      chatId: `-100${privateMatch[1]}`, // اضافه کردن پیشوند -100 برای API تلگرام
+      chatId: `-100${privateMatch[1]}`,
       topicId: privateMatch[2]
     };
   }
 
-  // فرمت گروه‌های پابلیک: t.me/group_username/55/120
+  // 3. حالت سوم: لینک ۳ بخشی گروه‌های پابلیک
+  const publicTopicMatch = link.match(/t\.me\/([a-zA-Z0-9_]+)\/(\d+)\/(\d+)/);
+  if (publicTopicMatch && publicTopicMatch[1].toLowerCase() !== 'c') {
+    return {
+      chatId: `@${publicTopicMatch[1]}`,
+      topicId: publicTopicMatch[2]
+    };
+  }
+
+  // 4. حالت چهارم: لینک ۲ بخشی گروه‌های پابلیک
   const publicMatch = link.match(/t\.me\/([a-zA-Z0-9_]+)\/(\d+)/);
-  if (publicMatch) {
-    if (publicMatch[1].toLowerCase() === 'c') return null; // جلوگیری از تداخل
+  if (publicMatch && publicMatch[1].toLowerCase() !== 'c') {
     return {
       chatId: `@${publicMatch[1]}`,
       topicId: publicMatch[2]
@@ -74,13 +94,14 @@ export function RankingSection({
   theme,
   data,
   onFilterPress,
-  filterActive
+  filterActive,
+  initialTopicLink,
+  onTopicLinkSave
 }: RankingSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
 
-  // استیت‌های مدیریت مودال و نوع عملیات
   const [actionType, setActionType] = useState<'COPY' | 'TELEGRAM' | null>(
     null
   );
@@ -143,8 +164,15 @@ export function RankingSection({
       return;
     }
     setActionType('TELEGRAM');
-    setDestination('PV');
-    setTopicLink('');
+
+    if (initialTopicLink) {
+      setDestination('TOPIC');
+      setTopicLink(initialTopicLink);
+    } else {
+      setDestination('PV');
+      setTopicLink('');
+    }
+
     setModalStep('size');
     setIsModalVisible(true);
   };
@@ -199,12 +227,17 @@ export function RankingSection({
         if (!parsed) {
           Alert.alert(
             'لینک نامعتبر',
-            'لطفاً یک لینک معتبر از یک پیام داخل تاپیک تلگرامی پیست کنید.'
+            'لطفاً یک لینک معتبر از تلگرام پیست کنید.'
           );
           return;
         }
         targetChatId = parsed.chatId;
         targetTopicId = parsed.topicId;
+
+        // ذخیره‌سازی لینک معتبر برای استفاده‌های بعدی
+        if (onTopicLinkSave && topicLink !== initialTopicLink) {
+          onTopicLinkSave(topicLink);
+        }
       }
 
       setIsModalVisible(false);
@@ -220,6 +253,7 @@ export function RankingSection({
     topicId?: string
   ) => {
     let hasError = false;
+    let currentTopicId = topicId;
 
     for (let i = 0; i < chunkList.length; i++) {
       try {
@@ -228,11 +262,11 @@ export function RankingSection({
           text: chunkList[i]
         };
 
-        if (topicId) {
-          bodyData.message_thread_id = topicId;
+        if (currentTopicId) {
+          bodyData.message_thread_id = currentTopicId;
         }
 
-        const response = await fetch(
+        let response = await fetch(
           `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
           {
             method: 'POST',
@@ -244,10 +278,51 @@ export function RankingSection({
         );
 
         if (!response.ok) {
-          hasError = true;
           const errorData = await response.json();
-          console.error('Telegram API Error on chunk', i + 1, errorData);
-          break;
+
+          // در صورتی که لینک فاقد تاپیک بود (اما ما اشتباهاً آن را تاپیک فرض کردیم)
+          if (
+            errorData.description?.includes('message thread not found') &&
+            currentTopicId
+          ) {
+            delete bodyData.message_thread_id;
+            currentTopicId = undefined; // برای پارت‌های بعدی هم تاپیک را حذف می‌کنیم
+
+            // تلاش مجدد برای ارسال پیام در چت عمومی (بدون تاپیک)
+            response = await fetch(
+              `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
+              {
+                method: 'POST',
+                headers: {
+                  'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(bodyData)
+              }
+            );
+
+            if (!response.ok) {
+              const retryErrorData = await response.json();
+              console.error(
+                'Telegram API Error on retry',
+                i + 1,
+                retryErrorData
+              );
+              Alert.alert(
+                'خطا در ارسال',
+                `ارسال کامل نشد.\n${retryErrorData.description || ''}`
+              );
+              hasError = true;
+              break;
+            }
+          } else {
+            console.error('Telegram API Error on chunk', i + 1, errorData);
+            Alert.alert(
+              'خطا در ارسال',
+              `ارسال کامل نشد. مطمئن شوید ربات در گروه مدیر است.\n${errorData.description || ''}`
+            );
+            hasError = true;
+            break;
+          }
         }
 
         if (i < chunkList.length - 1) {
@@ -256,17 +331,13 @@ export function RankingSection({
       } catch (error) {
         hasError = true;
         console.error('Network Error:', error);
+        Alert.alert('خطا در ارتباط', 'مشکلی در ارتباط با سرور تلگرام پیش آمد.');
         break;
       }
     }
 
-    if (hasError) {
-      Alert.alert(
-        'خطا در ارسال',
-        'ارسال کامل نشد. لطفاً وضعیت اینترنت، لینک تاپیک و ربات را بررسی کنید.'
-      );
-    } else {
-      const destText = topicId ? 'تاپیک مشخص شده' : 'پی‌وی شما';
+    if (!hasError) {
+      const destText = topicId ? 'گروه/تاپیک مشخص شده' : 'پی‌وی شما';
       Alert.alert(
         'ارسال موفق',
         `لیست شما در قالب ${chunkList.length} بسته با موفقیت به ${destText} ارسال شد.`
@@ -323,12 +394,18 @@ export function RankingSection({
               disabled={isSending}
               className={`w-9 h-9 rounded-xl items-center justify-center active:scale-95 transition-transform ${buttonBg} ${isSending ? 'opacity-50' : ''}`}
             >
-              <Ionicons
-                name={isSending ? 'refresh-outline' : 'paper-plane-outline'}
-                size={16}
-                color={isBlue ? '#4f46e5' : '#ea580c'}
-                className={isSending ? 'animate-spin' : ''}
-              />
+              {isSending ? (
+                <ActivityIndicator
+                  size="small"
+                  color={isBlue ? '#4f46e5' : '#ea580c'}
+                />
+              ) : (
+                <Ionicons
+                  name="paper-plane-outline"
+                  size={16}
+                  color={isBlue ? '#4f46e5' : '#ea580c'}
+                />
+              )}
             </Pressable>
 
             <Pressable
@@ -521,7 +598,7 @@ export function RankingSection({
                       onChangeText={setTopicLink}
                     />
                     <Text className="text-slate-400 text-[10px] font-main mt-2 text-right">
-                      لینک یکی از پیام‌های داخل تاپیک مد نظر را پیست کنید.
+                      لینک یکی از پیام‌های داخل گروه یا تاپیک را پیست کنید.
                     </Text>
                   </Animated.View>
                 )}
