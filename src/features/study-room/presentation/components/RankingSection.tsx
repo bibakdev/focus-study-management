@@ -20,8 +20,10 @@ const TELEGRAM_CHAT_ID = '8586178318';
 export interface RankingItem {
   id: string;
   name: string;
-  timeMinutes: number;
+  timeMinutes: number; // برای پشتیبانی از رکوردهای زمانی
   oldRecordMinutes?: number;
+  value?: number; // مقدار عددی جدید (مثل موز یا روز)
+  oldValue?: number; // رکورد قبلی عددی
 }
 
 interface RankingSectionProps {
@@ -34,6 +36,8 @@ interface RankingSectionProps {
   filterActive?: boolean;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
+  displayType?: 'time' | 'number'; // نوع نمایش
+  valueSuffix?: string; // پسوند مقدار عددی (مثلاً "موز" یا "روز")
 }
 
 const formatTime = (minutes: number) => {
@@ -44,11 +48,9 @@ const formatTime = (minutes: number) => {
   return `${m}m`;
 };
 
-// تابع استخراج خودکار Chat ID و Topic ID از لینک تلگرام (پشتیبانی از لینک‌های گروه و تاپیک)
 function parseTelegramLink(
   link: string
 ): { chatId: string; topicId?: string } | null {
-  // 1. حالت اول: لینک ۳ بخشی مربوط به یک پیام داخل تاپیک (t.me/c/chatId/topicId/msgId)
   const privateTopicMatch = link.match(/t\.me\/c\/(\d+)\/(\d+)\/(\d+)/);
   if (privateTopicMatch) {
     return {
@@ -57,7 +59,6 @@ function parseTelegramLink(
     };
   }
 
-  // 2. حالت دوم: لینک ۲ بخشی مربوط به پیام گروه معمولی یا لینک خود تاپیک
   const privateMatch = link.match(/t\.me\/c\/(\d+)\/(\d+)/);
   if (privateMatch) {
     return {
@@ -66,7 +67,6 @@ function parseTelegramLink(
     };
   }
 
-  // 3. حالت سوم: لینک ۳ بخشی گروه‌های پابلیک
   const publicTopicMatch = link.match(/t\.me\/([a-zA-Z0-9_]+)\/(\d+)\/(\d+)/);
   if (publicTopicMatch && publicTopicMatch[1].toLowerCase() !== 'c') {
     return {
@@ -75,7 +75,6 @@ function parseTelegramLink(
     };
   }
 
-  // 4. حالت چهارم: لینک ۲ بخشی گروه‌های پابلیک
   const publicMatch = link.match(/t\.me\/([a-zA-Z0-9_]+)\/(\d+)/);
   if (publicMatch && publicMatch[1].toLowerCase() !== 'c') {
     return {
@@ -96,7 +95,9 @@ export function RankingSection({
   onFilterPress,
   filterActive,
   initialTopicLink,
-  onTopicLinkSave
+  onTopicLinkSave,
+  displayType = 'time',
+  valueSuffix = ''
 }: RankingSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -124,7 +125,11 @@ export function RankingSection({
 
     data.forEach((item, index) => {
       const rank = index + 1;
-      const timeStr = formatTime(item.timeMinutes);
+
+      const timeStr =
+        displayType === 'number'
+          ? `${item.value || 0} ${valueSuffix}`.trim()
+          : formatTime(item.timeMinutes);
 
       let prefix = '';
       if (rank === 1) prefix = '🥇';
@@ -132,10 +137,18 @@ export function RankingSection({
       else if (rank === 3) prefix = '🥉';
       else prefix = ` ${rank}. `;
 
-      if (item.oldRecordMinutes) {
-        lines.push(
-          `${prefix}${item.name} - ${formatTime(item.oldRecordMinutes)} 👉 ${timeStr}`
-        );
+      const hasOldValue =
+        displayType === 'number'
+          ? item.oldValue !== undefined
+          : item.oldRecordMinutes !== undefined;
+
+      if (hasOldValue) {
+        const oldTimeStr =
+          displayType === 'number'
+            ? `${item.oldValue || 0} ${valueSuffix}`.trim()
+            : formatTime(item.oldRecordMinutes || 0);
+
+        lines.push(`${prefix}${item.name} - ${oldTimeStr} 👉 ${timeStr}`);
       } else {
         lines.push(`${prefix}${item.name} - ${timeStr}`);
       }
@@ -234,7 +247,6 @@ export function RankingSection({
         targetChatId = parsed.chatId;
         targetTopicId = parsed.topicId;
 
-        // ذخیره‌سازی لینک معتبر برای استفاده‌های بعدی
         if (onTopicLinkSave && topicLink !== initialTopicLink) {
           onTopicLinkSave(topicLink);
         }
@@ -280,15 +292,13 @@ export function RankingSection({
         if (!response.ok) {
           const errorData = await response.json();
 
-          // در صورتی که لینک فاقد تاپیک بود (اما ما اشتباهاً آن را تاپیک فرض کردیم)
           if (
             errorData.description?.includes('message thread not found') &&
             currentTopicId
           ) {
             delete bodyData.message_thread_id;
-            currentTopicId = undefined; // برای پارت‌های بعدی هم تاپیک را حذف می‌کنیم
+            currentTopicId = undefined;
 
-            // تلاش مجدد برای ارسال پیام در چت عمومی (بدون تاپیک)
             response = await fetch(
               `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`,
               {
@@ -302,11 +312,6 @@ export function RankingSection({
 
             if (!response.ok) {
               const retryErrorData = await response.json();
-              console.error(
-                'Telegram API Error on retry',
-                i + 1,
-                retryErrorData
-              );
               Alert.alert(
                 'خطا در ارسال',
                 `ارسال کامل نشد.\n${retryErrorData.description || ''}`
@@ -315,7 +320,6 @@ export function RankingSection({
               break;
             }
           } else {
-            console.error('Telegram API Error on chunk', i + 1, errorData);
             Alert.alert(
               'خطا در ارسال',
               `ارسال کامل نشد. مطمئن شوید ربات در گروه مدیر است.\n${errorData.description || ''}`
@@ -330,7 +334,6 @@ export function RankingSection({
         }
       } catch (error) {
         hasError = true;
-        console.error('Network Error:', error);
         Alert.alert('خطا در ارتباط', 'مشکلی در ارتباط با سرور تلگرام پیش آمد.');
         break;
       }
@@ -478,26 +481,41 @@ export function RankingSection({
                       ? '🥉'
                       : '▫️';
 
+                const timeStr =
+                  displayType === 'number'
+                    ? `${item.value || 0} ${valueSuffix}`.trim()
+                    : formatTime(item.timeMinutes);
+
+                const hasOldValue =
+                  displayType === 'number'
+                    ? item.oldValue !== undefined
+                    : item.oldRecordMinutes !== undefined;
+
+                const oldTimeStr =
+                  displayType === 'number'
+                    ? `${item.oldValue || 0} ${valueSuffix}`.trim()
+                    : formatTime(item.oldRecordMinutes || 0);
+
                 return (
                   <View
                     key={item.id}
                     className={`flex-row justify-between items-center p-3 mb-2 rounded-2xl border ${cardBg}`}
                   >
                     <View className="flex-row items-center">
-                      {item.oldRecordMinutes ? (
+                      {hasOldValue ? (
                         <View className="flex-row items-center gap-2">
                           <Text
                             className="text-slate-400 text-xs font-bold line-through"
                             style={{ direction: 'ltr' }}
                           >
-                            {formatTime(item.oldRecordMinutes)}
+                            {oldTimeStr}
                           </Text>
                           <Text className="text-xs">{'👈'}</Text>
                           <Text
                             className="text-emerald-500 text-sm font-bold"
                             style={{ direction: 'ltr' }}
                           >
-                            {formatTime(item.timeMinutes)}
+                            {timeStr}
                           </Text>
                         </View>
                       ) : (
@@ -505,7 +523,7 @@ export function RankingSection({
                           className="text-slate-600 text-sm font-bold"
                           style={{ direction: 'ltr' }}
                         >
-                          {formatTime(item.timeMinutes)}
+                          {timeStr}
                         </Text>
                       )}
                     </View>

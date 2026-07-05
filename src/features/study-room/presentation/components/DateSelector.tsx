@@ -3,7 +3,6 @@ import { TextInputWithIcon } from '@/shared/components/inputs/TextInputWithIcon'
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Keyboard, Pressable, Text, View } from 'react-native';
-import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 
 const getPersianWeekday = (dateStr: string): string => {
   const parts = dateStr.split('/');
@@ -67,7 +66,7 @@ interface DateSelectorProps {
   selectedDate: string | null;
   onConfirm: (date: string) => void;
   onEdit: () => void;
-  buttonLabel?: string; // پراپ جدید برای تغییر نام دکمه
+  buttonLabel?: string;
 }
 
 export function DateSelector({
@@ -114,12 +113,7 @@ export function DateSelector({
     const weekdayName = getPersianWeekday(selectedDate);
 
     return (
-      <Animated.View
-        layout={Layout.springify().damping(15)}
-        entering={FadeIn}
-        exiting={FadeOut}
-        className="bg-primary-light/30 border border-primary-light/50 rounded-3xl p-4 flex-row items-center justify-between"
-      >
+      <View className="bg-primary-light/30 border border-primary-light/50 rounded-3xl p-4 flex-row items-center justify-between">
         <Pressable
           onPress={onEdit}
           className="bg-surface-card px-4 py-2 rounded-xl active:scale-95 transition-transform border border-primary-light/50"
@@ -140,16 +134,12 @@ export function DateSelector({
             {selectedDate} ({weekdayName})
           </Text>
         </View>
-      </Animated.View>
+      </View>
     );
   }
 
   return (
-    <Animated.View
-      layout={Layout.springify().damping(15)}
-      entering={FadeIn}
-      className="bg-surface-card rounded-3xl p-5 shadow-sm border border-surface-muted"
-    >
+    <View className="bg-surface-card rounded-3xl p-5 shadow-sm border border-surface-muted">
       <View className="flex-row items-center gap-2 mb-4">
         <Ionicons name="calendar-outline" size={24} color="#4f46e5" />
         <Text className="text-text-primary font-bold text-lg font-main">
@@ -182,6 +172,6 @@ export function DateSelector({
         onPress={handleConfirm}
         disabled={!inputValue.trim()}
       />
-    </Animated.View>
+    </View>
   );
 }

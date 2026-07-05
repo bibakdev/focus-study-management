@@ -2,7 +2,8 @@ import { BottomNav, TabType } from '@/shared/components/navigation/BottomNav';
 import { View } from 'react-native';
 import { Group } from '../../../domain/entities/group';
 import { RoomHeader } from '../../components/RoomHeader';
-import { RankingTab } from '../ranking-tab'; // <--- تب رتبه‌بندی اضافه شد
+import { BananaTab } from '../banana-tab'; // <--- تب چالش موز ایمپورت شد
+import { RankingTab } from '../ranking-tab';
 import { TimeTab } from '../time-tab';
 import { UsersTab } from '../users-tab';
 
@@ -43,9 +44,13 @@ export function RoomDetailPresentational({
           <TimeTab groupId={currentGroup.id} />
         )}
 
-        {/* <--- رندر تب رتبه‌بندی ---> */}
         {currentGroup && activeTab === 'ranking' && (
           <RankingTab groupId={currentGroup.id} />
+        )}
+
+        {/* <--- رندر تب چالش موزی ---> */}
+        {currentGroup && activeTab === 'banana' && (
+          <BananaTab groupId={currentGroup.id} />
         )}
       </View>
 
