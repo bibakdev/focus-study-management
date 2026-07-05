@@ -1,13 +1,14 @@
+import { Ionicons } from '@expo/vector-icons';
 import React from 'react';
 import {
-  Modal,
-  View,
-  Pressable,
-  KeyboardAvoidingView,
-  Platform,
-  Text,
   Keyboard,
-  TouchableWithoutFeedback
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  Text,
+  TouchableWithoutFeedback,
+  View
 } from 'react-native';
 
 interface BottomSheetModalProps {
@@ -16,6 +17,8 @@ interface BottomSheetModalProps {
   title: string;
   description?: string;
   children: React.ReactNode;
+  showCloseButton?: boolean;
+  onBack?: () => void; // پراپ جدید برای دکمه بازگشت
 }
 
 export function BottomSheetModal({
@@ -23,7 +26,9 @@ export function BottomSheetModal({
   onClose,
   title,
   description,
-  children
+  children,
+  showCloseButton,
+  onBack
 }: BottomSheetModalProps) {
   return (
     <Modal
@@ -50,12 +55,34 @@ export function BottomSheetModal({
           </View>
 
           {/* هدر مدال */}
-          <View className="mb-6">
-            <Text className="text-xl font-bold text-slate-800 text-right font-[Vazirmatn]">
-              {title}
-            </Text>
+          <View className="mb-6 relative min-h-[32px] justify-center">
+            {/* دکمه ضربدر در سمت چپ */}
+            {showCloseButton && (
+              <Pressable
+                onPress={onClose}
+                className="absolute left-0 top-0 z-10 w-8 h-8 bg-slate-100 rounded-full items-center justify-center active:bg-slate-200 transition-colors"
+              >
+                <Ionicons name="close" size={18} color="#64748b" />
+              </Pressable>
+            )}
+
+            {/* عنوان و دکمه بازگشت (در سمت راست) */}
+            <View className="flex-row items-center justify-end gap-3">
+              <Text className="text-xl font-bold text-slate-800 text-right font-[Vazirmatn]">
+                {title}
+              </Text>
+              {onBack && (
+                <Pressable
+                  onPress={onBack}
+                  className="w-8 h-8 bg-slate-100 rounded-full items-center justify-center active:bg-slate-200 transition-colors"
+                >
+                  <Ionicons name="chevron-forward" size={18} color="#64748b" />
+                </Pressable>
+              )}
+            </View>
+
             {description && (
-              <Text className="text-sm text-slate-500 text-right mt-1 font-[Vazirmatn]">
+              <Text className="text-sm text-slate-500 text-right mt-2 leading-6 font-[Vazirmatn]">
                 {description}
               </Text>
             )}

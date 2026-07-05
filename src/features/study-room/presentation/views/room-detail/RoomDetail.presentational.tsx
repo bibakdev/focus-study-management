@@ -2,7 +2,8 @@ import { BottomNav, TabType } from '@/shared/components/navigation/BottomNav';
 import { View } from 'react-native';
 import { Group } from '../../../domain/entities/group';
 import { RoomHeader } from '../../components/RoomHeader';
-import { TimeTab } from '../time-tab'; // ایمپورت کامپوننت جدید اضافه شد
+import { RankingTab } from '../ranking-tab'; // <--- تب رتبه‌بندی اضافه شد
+import { TimeTab } from '../time-tab';
 import { UsersTab } from '../users-tab';
 
 export interface RoomDetailPresentationalProps {
@@ -38,9 +39,13 @@ export function RoomDetailPresentational({
           <UsersTab groupId={currentGroup.id} />
         )}
 
-        {/* شرط رندر شدن تب ساعت اضافه شد */}
         {currentGroup && activeTab === 'time' && (
           <TimeTab groupId={currentGroup.id} />
+        )}
+
+        {/* <--- رندر تب رتبه‌بندی ---> */}
+        {currentGroup && activeTab === 'ranking' && (
+          <RankingTab groupId={currentGroup.id} />
         )}
       </View>
 

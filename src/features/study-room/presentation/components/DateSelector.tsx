@@ -5,7 +5,6 @@ import { useState } from 'react';
 import { Keyboard, Pressable, Text, View } from 'react-native';
 import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 
-// تابع محاسباتی دقیق برای پیدا کردن روز هفته از روی تاریخ شمسی
 const getPersianWeekday = (dateStr: string): string => {
   const parts = dateStr.split('/');
   if (parts.length !== 3) return '';
@@ -68,16 +67,17 @@ interface DateSelectorProps {
   selectedDate: string | null;
   onConfirm: (date: string) => void;
   onEdit: () => void;
+  buttonLabel?: string; // پراپ جدید برای تغییر نام دکمه
 }
 
 export function DateSelector({
   selectedDate,
   onConfirm,
-  onEdit
+  onEdit,
+  buttonLabel
 }: DateSelectorProps) {
   const [inputValue, setInputValue] = useState(selectedDate || '');
 
-  // تولید تاریخ با اعداد انگلیسی
   const getIRSTPersianDate = (offsetDays: number = 0) => {
     const now = new Date();
     const iranTime = new Date(now.getTime() + 3.5 * 60 * 60 * 1000);
@@ -131,7 +131,7 @@ export function DateSelector({
 
         <View className="items-end">
           <Text className="text-primary-main/70 text-[11px] font-main font-bold mb-1">
-            در حال ثبت اطلاعات برای:
+            در حال مشاهده اطلاعات برای:
           </Text>
           <Text
             className="text-primary-main font-bold text-base font-main"
@@ -153,7 +153,7 @@ export function DateSelector({
       <View className="flex-row items-center gap-2 mb-4">
         <Ionicons name="calendar-outline" size={24} color="#4f46e5" />
         <Text className="text-text-primary font-bold text-lg font-main">
-          ثبت تاریخ روز رقابت
+          انتخاب تاریخ
         </Text>
       </View>
 
@@ -177,7 +177,7 @@ export function DateSelector({
       </View>
 
       <PrimaryActionButton
-        label="تایید و ذخیره تاریخ"
+        label={buttonLabel || 'تایید و ذخیره تاریخ'}
         iconName="save-outline"
         onPress={handleConfirm}
         disabled={!inputValue.trim()}
