@@ -1,7 +1,12 @@
 import { db } from '@/core/database/db';
-import { groupDates, members, studyLogs } from '@/core/database/schema';
+import {
+  groupDates,
+  members,
+  memberTargets,
+  studyLogs
+} from '@/core/database/schema';
 import { asc, eq } from 'drizzle-orm';
-import { Member } from '../../domain/entities/member';
+import { Member, MemberTarget } from '../../domain/entities/member';
 import { MemberStatusRepository } from '../../domain/repositories/member-status.repository';
 
 export class MemberStatusRepositoryImpl implements MemberStatusRepository {
@@ -11,14 +16,12 @@ export class MemberStatusRepositoryImpl implements MemberStatusRepository {
       .from(members)
       .where(eq(members.groupId, groupId));
 
-    // استخراج تاریخ‌ها به ترتیب از قدیمی به جدید برای محاسبه اصولی
     const dates = await db
       .select()
       .from(groupDates)
       .where(eq(groupDates.groupId, groupId))
       .orderBy(asc(groupDates.persianDate));
 
-    // استخراج لاگ‌ها
     const logs = await db
       .select({
         memberId: studyLogs.memberId,
@@ -29,10 +32,16 @@ export class MemberStatusRepositoryImpl implements MemberStatusRepository {
       .innerJoin(groupDates, eq(studyLogs.groupDateId, groupDates.id))
       .where(eq(groupDates.groupId, groupId));
 
+    const targets = await db
+      .select()
+      .from(memberTargets)
+      .where(eq(memberTargets.groupId, groupId));
+
     return {
       members: groupMembers as unknown as Member[],
       dates,
-      logs
+      logs,
+      targets: targets as unknown as MemberTarget[]
     };
   }
 
@@ -42,16 +51,17 @@ export class MemberStatusRepositoryImpl implements MemberStatusRepository {
       isActive: boolean;
       absenceDays: number;
       activeStreak: number;
+      highestActiveStreak: number;
     }[]
   ) {
-    // آپدیت کاربران در دیتابیس لوکال
     for (const m of updatedMembers) {
       await db
         .update(members)
         .set({
           isActive: m.isActive,
           absenceDays: m.absenceDays,
-          activeStreak: m.activeStreak // همیشه صفر ارسال می‌شود
+          activeStreak: m.activeStreak,
+          highestActiveStreak: m.highestActiveStreak
         })
         .where(eq(members.id, m.id));
     }

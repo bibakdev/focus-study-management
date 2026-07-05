@@ -1,10 +1,11 @@
-import { Member } from '../entities/member';
+import { Member, MemberTarget } from '../entities/member';
 
 export interface MemberStatusRepository {
   getGroupDataForCalculation(groupId: string): Promise<{
     members: Member[];
     dates: { id: string; persianDate: string }[];
     logs: { memberId: string; groupDateId: string; studyMinutes: number }[];
+    targets: MemberTarget[];
   }>;
   updateMembersStatus(
     members: {
@@ -12,6 +13,7 @@ export interface MemberStatusRepository {
       isActive: boolean;
       absenceDays: number;
       activeStreak: number;
+      highestActiveStreak: number;
     }[]
   ): Promise<void>;
 }
