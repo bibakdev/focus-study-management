@@ -9,6 +9,9 @@ export interface Member {
   absenceDays: number;
   consecutiveEggplants: number;
   personalRecordMinutes: number;
+  totalCheckmarks: number;
+  totalBananas: number;
+  totalEggplants: number;
   joinedAt: Date;
 }
 

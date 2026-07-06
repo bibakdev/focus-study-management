@@ -45,6 +45,9 @@ export const members = sqliteTable(
     personalRecordMinutes: integer('personal_record_minutes')
       .notNull()
       .default(0),
+    totalCheckmarks: integer('total_checkmarks').notNull().default(0),
+    totalBananas: integer('total_bananas').notNull().default(0),
+    totalEggplants: integer('total_eggplants').notNull().default(0),
     joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull()
   },
   (table) => ({

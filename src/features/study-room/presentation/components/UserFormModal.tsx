@@ -56,14 +56,14 @@ export function UserFormModal({
     activeStreak: 0,
     absenceDays: 0,
     targetType: 'FIXED',
-    defaultTime: { h: '2', m: '00' },
+    defaultTime: { h: '0', m: '00' },
     weekly: {
-      saturday: { h: '2', m: '00' },
-      sunday: { h: '2', m: '00' },
-      monday: { h: '2', m: '00' },
-      tuesday: { h: '2', m: '00' },
-      wednesday: { h: '2', m: '00' },
-      thursday: { h: '2', m: '00' },
+      saturday: { h: '0', m: '00' },
+      sunday: { h: '0', m: '00' },
+      monday: { h: '0', m: '00' },
+      tuesday: { h: '0', m: '00' },
+      wednesday: { h: '0', m: '00' },
+      thursday: { h: '0', m: '00' },
       friday: { h: '0', m: '00' }
     }
   });
@@ -77,14 +77,14 @@ export function UserFormModal({
         activeStreak: initialData.member.activeStreak,
         absenceDays: initialData.member.absenceDays || 0,
         targetType: initialData.target?.targetType || 'FIXED',
-        defaultTime: minsToTime(initialData.target?.defaultMinutes || 120),
+        defaultTime: minsToTime(initialData.target?.defaultMinutes || 0),
         weekly: {
-          saturday: minsToTime(initialData.target?.saturdayMinutes || 120),
-          sunday: minsToTime(initialData.target?.sundayMinutes || 120),
-          monday: minsToTime(initialData.target?.mondayMinutes || 120),
-          tuesday: minsToTime(initialData.target?.tuesdayMinutes || 120),
-          wednesday: minsToTime(initialData.target?.wednesdayMinutes || 120),
-          thursday: minsToTime(initialData.target?.thursdayMinutes || 120),
+          saturday: minsToTime(initialData.target?.saturdayMinutes || 0),
+          sunday: minsToTime(initialData.target?.sundayMinutes || 0),
+          monday: minsToTime(initialData.target?.mondayMinutes || 0),
+          tuesday: minsToTime(initialData.target?.tuesdayMinutes || 0),
+          wednesday: minsToTime(initialData.target?.wednesdayMinutes || 0),
+          thursday: minsToTime(initialData.target?.thursdayMinutes || 0),
           friday: minsToTime(initialData.target?.fridayMinutes || 0)
         }
       });
@@ -96,14 +96,14 @@ export function UserFormModal({
         activeStreak: 0,
         absenceDays: 0,
         targetType: 'FIXED',
-        defaultTime: { h: '2', m: '00' },
+        defaultTime: { h: '0', m: '00' },
         weekly: {
-          saturday: { h: '2', m: '00' },
-          sunday: { h: '2', m: '00' },
-          monday: { h: '2', m: '00' },
-          tuesday: { h: '2', m: '00' },
-          wednesday: { h: '2', m: '00' },
-          thursday: { h: '2', m: '00' },
+          saturday: { h: '0', m: '00' },
+          sunday: { h: '0', m: '00' },
+          monday: { h: '0', m: '00' },
+          tuesday: { h: '0', m: '00' },
+          wednesday: { h: '0', m: '00' },
+          thursday: { h: '0', m: '00' },
           friday: { h: '0', m: '00' }
         }
       });
@@ -185,7 +185,6 @@ export function UserFormModal({
           </View>
         </View>
 
-        {/* شمارنده وضعیت */}
         <View className="flex-row bg-surface-muted p-3 rounded-2xl items-center justify-between">
           <Text className="font-main text-text-muted text-sm font-bold">
             {formData.isActive ? 'روزهای استمرار 🔥' : 'روزهای غیبت 💤'}
@@ -224,7 +223,6 @@ export function UserFormModal({
           </View>
         </View>
 
-        {/* تنظیمات تارگت */}
         <View className="bg-surface-muted p-4 rounded-2xl">
           <View className="flex-row items-center justify-between mb-4">
             <Switch

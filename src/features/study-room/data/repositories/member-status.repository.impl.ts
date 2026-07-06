@@ -1,16 +1,24 @@
 import { db } from '@/core/database/db';
 import {
   groupDates,
+  groups,
   members,
   memberTargets,
   studyLogs
 } from '@/core/database/schema';
 import { asc, eq } from 'drizzle-orm';
+import { Group } from '../../domain/entities/group';
 import { Member, MemberTarget } from '../../domain/entities/member';
 import { MemberStatusRepository } from '../../domain/repositories/member-status.repository';
 
 export class MemberStatusRepositoryImpl implements MemberStatusRepository {
   async getGroupDataForCalculation(groupId: string) {
+    const group = await db
+      .select()
+      .from(groups)
+      .where(eq(groups.id, groupId))
+      .limit(1);
+
     const groupMembers = await db
       .select()
       .from(members)
@@ -38,6 +46,7 @@ export class MemberStatusRepositoryImpl implements MemberStatusRepository {
       .where(eq(memberTargets.groupId, groupId));
 
     return {
+      group: group.length > 0 ? (group[0] as unknown as Group) : null,
       members: groupMembers as unknown as Member[],
       dates,
       logs,
@@ -52,6 +61,10 @@ export class MemberStatusRepositoryImpl implements MemberStatusRepository {
       absenceDays: number;
       activeStreak: number;
       highestActiveStreak: number;
+      personalRecordMinutes: number;
+      totalCheckmarks: number;
+      totalBananas: number;
+      totalEggplants: number;
     }[]
   ) {
     for (const m of updatedMembers) {
@@ -61,7 +74,11 @@ export class MemberStatusRepositoryImpl implements MemberStatusRepository {
           isActive: m.isActive,
           absenceDays: m.absenceDays,
           activeStreak: m.activeStreak,
-          highestActiveStreak: m.highestActiveStreak
+          highestActiveStreak: m.highestActiveStreak,
+          personalRecordMinutes: m.personalRecordMinutes,
+          totalCheckmarks: m.totalCheckmarks,
+          totalBananas: m.totalBananas,
+          totalEggplants: m.totalEggplants
         })
         .where(eq(members.id, m.id));
     }

@@ -1,30 +1,69 @@
 import { getPersianWeekday } from '@/core/utils/date';
 import { MemberStatusRepository } from '../repositories/member-status.repository';
 
+const getPersianDateStr = (date: Date) => {
+  try {
+    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
+      calendar: 'persian',
+      timeZone: 'Asia/Tehran',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const parts = formatter.formatToParts(date);
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value.padStart(2, '0');
+    const day = parts.find((p) => p.type === 'day')?.value.padStart(2, '0');
+    return `${year}/${month}/${day}`;
+  } catch (e) {
+    return '1400/01/01';
+  }
+};
+
 export class CalculateAbsenceUseCase {
   constructor(private readonly repository: MemberStatusRepository) {}
 
   async execute(groupId: string): Promise<void> {
-    const { members, dates, logs, targets } =
+    const { group, members, dates, logs, targets } =
       await this.repository.getGroupDataForCalculation(groupId);
 
-    if (dates.length === 0) return;
+    if (dates.length === 0 || !group) return;
+
+    const bananaThreshold = group.bananaThreshold;
 
     const updatedMembers = members.map((member) => {
       let absenceDays = 0;
       let activeStreak = 0;
       let highestActiveStreak = 0;
+      let personalRecordMinutes = 0;
+      let totalCheckmarks = 0;
+      let totalBananas = 0;
+      let totalEggplants = 0;
       let isActive = true;
 
       const targetData = targets.find((t) => t.memberId === member.id);
+      const isChallenging =
+        member.inBananaChallenge === true || member.inBananaChallenge === 1;
 
-      for (const date of dates) {
+      const memberJoinPersian = getPersianDateStr(new Date(member.joinedAt));
+
+      // فقط روزهایی که از تاریخ عضویت به بعد بوده‌اند یا در آن‌ها لاگ ثبت شده محاسبه می‌شوند
+      const validDates = dates.filter((d) => {
+        return (
+          d.persianDate >= memberJoinPersian ||
+          logs.some((l) => l.memberId === member.id && l.groupDateId === d.id)
+        );
+      });
+
+      for (const date of validDates) {
         const hasLog = logs.find(
           (l) => l.memberId === member.id && l.groupDateId === date.id
         );
         const mins = hasLog ? hasLog.studyMinutes : 0;
 
-        let dailyTarget = 120;
+        personalRecordMinutes = Math.max(personalRecordMinutes, mins);
+
+        let dailyTarget = 0;
         if (targetData) {
           if (targetData.targetType === 'FIXED') {
             dailyTarget = targetData.defaultMinutes;
@@ -56,22 +95,36 @@ export class CalculateAbsenceUseCase {
           }
         }
 
+        if (!isChallenging || dailyTarget === 0) {
+          activeStreak = 0;
+          absenceDays = 0;
+          isActive = true;
+          continue;
+        }
+
         if (mins >= dailyTarget) {
-          // دریافت ✅ (رسیدن به تارگت)
           absenceDays = 0;
           activeStreak += 1;
           highestActiveStreak = Math.max(highestActiveStreak, activeStreak);
           isActive = true;
+
+          totalCheckmarks += 1;
         } else if (mins > 0) {
-          // دریافت 🍌 یا 🍆 (تایم زده اما کمتر از تارگت)
           absenceDays = 0;
           activeStreak = 0;
           isActive = true;
+
+          if (mins >= bananaThreshold) {
+            totalBananas += 1;
+          } else {
+            totalEggplants += 1;
+          }
         } else {
-          // دریافت ❌ (غیبت کامل)
           absenceDays += 1;
           activeStreak = 0;
           isActive = false;
+
+          totalEggplants += 1; // 0 دقیقه هم یک بادمجان محسوب می‌شود
         }
       }
 
@@ -80,7 +133,11 @@ export class CalculateAbsenceUseCase {
         isActive,
         absenceDays,
         activeStreak,
-        highestActiveStreak
+        highestActiveStreak,
+        personalRecordMinutes,
+        totalCheckmarks,
+        totalBananas,
+        totalEggplants
       };
     });
 

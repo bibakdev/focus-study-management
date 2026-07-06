@@ -114,6 +114,40 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
           const memberJoinPersian = getPersianDateStr(new Date(m.joinedAt));
           const targetData = allTargets.find((t) => t.memberId === m.id);
 
+          let todayTarget = 0; // <--- پیش فرض به 0 تغییر کرد
+          if (targetData) {
+            if (targetData.targetType === 'FIXED') {
+              todayTarget = targetData.defaultMinutes;
+            } else {
+              switch (weekdayStr) {
+                case 'شنبه':
+                  todayTarget = targetData.saturdayMinutes;
+                  break;
+                case 'یکشنبه':
+                  todayTarget = targetData.sundayMinutes;
+                  break;
+                case 'دوشنبه':
+                  todayTarget = targetData.mondayMinutes;
+                  break;
+                case 'سه‌شنبه':
+                  todayTarget = targetData.tuesdayMinutes;
+                  break;
+                case 'چهارشنبه':
+                  todayTarget = targetData.wednesdayMinutes;
+                  break;
+                case 'پنج‌شنبه':
+                  todayTarget = targetData.thursdayMinutes;
+                  break;
+                case 'جمعه':
+                  todayTarget = targetData.fridayMinutes;
+                  break;
+              }
+            }
+          }
+
+          // 🟢 شرط جدید: اگر تارگت شخص امروز صفر است، نباید در لیست‌ها بیاید
+          if (todayTarget === 0) continue;
+
           const validDates = datesUpToActive.filter((d) => {
             if (d.id === activeDateId) return true;
             if (d.persianDate >= memberJoinPersian) return true;
@@ -128,15 +162,13 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
           let maxHistoricalStreak = 0;
           let currentStreak = 0;
 
-          // 1. لوپ بررسی تاریخ‌ها برای استخراج اطلاعات موز و استمرار
           for (const d of validDates) {
             const log = allHistoricalLogs.find(
               (l) => l.memberId === m.id && l.groupDateId === d.id
             );
             const mins = log ? log.studyMinutes : 0;
 
-            // محاسبه تارگت برای این روز خاص
-            let dTarget = 120;
+            let dTarget = 0; // <--- پیش فرض صفر
             if (targetData) {
               if (targetData.targetType === 'FIXED') {
                 dTarget = targetData.defaultMinutes;
@@ -168,14 +200,15 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
               }
             }
 
-            // قانون استمرار: فقط زمان بزرگتر مساوی تارگت (✅)
-            if (mins >= dTarget) {
-              currentStreak++;
-            } else {
-              currentStreak = 0;
+            // اگر تارگت گذشته هم صفر بوده استمرار نباید محاسبه شود
+            if (dTarget > 0) {
+              if (mins >= dTarget) {
+                currentStreak++;
+              } else {
+                currentStreak = 0;
+              }
             }
 
-            // آپدیت بیشترین رکورد قبل از تاریخ انتخاب شده
             if (d.persianDate < activeDate) {
               maxHistoricalStreak = Math.max(
                 maxHistoricalStreak,
@@ -183,7 +216,6 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
               );
             }
 
-            // قانون بادمجان و چالش موز
             if (mins < currentGroup.bananaThreshold) {
               consecutiveEggplants++;
             } else {
@@ -204,50 +236,16 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
 
           if (wasEliminatedBefore) continue;
 
-          // بررسی وضعیت امروز
           const todayLog = allHistoricalLogs.find(
             (l) => l.memberId === m.id && l.groupDateId === activeDateId
           );
           const todayMinutes = todayLog ? todayLog.studyMinutes : 0;
 
-          let todayTarget = 120;
-          if (targetData) {
-            if (targetData.targetType === 'FIXED') {
-              todayTarget = targetData.defaultMinutes;
-            } else {
-              switch (weekdayStr) {
-                case 'شنبه':
-                  todayTarget = targetData.saturdayMinutes;
-                  break;
-                case 'یکشنبه':
-                  todayTarget = targetData.sundayMinutes;
-                  break;
-                case 'دوشنبه':
-                  todayTarget = targetData.mondayMinutes;
-                  break;
-                case 'سه‌شنبه':
-                  todayTarget = targetData.tuesdayMinutes;
-                  break;
-                case 'چهارشنبه':
-                  todayTarget = targetData.wednesdayMinutes;
-                  break;
-                case 'پنج‌شنبه':
-                  todayTarget = targetData.thursdayMinutes;
-                  break;
-                case 'جمعه':
-                  todayTarget = targetData.fridayMinutes;
-                  break;
-              }
-            }
-          }
-
           if (todayMinutes === 0 && !getsEliminatedToday) continue;
 
-          // 2. درج در آرایه استمرارها در صورت کسب تیک سبز امروز ✅
           const gotCheckmarkToday = todayMinutes >= todayTarget;
 
           if (gotCheckmarkToday) {
-            // اگر استمرار الان از بیشترین استمراری که قبلا داشته بیشتر باشد، یعنی رکورد زده است.
             const isRecordBroken =
               currentStreak > maxHistoricalStreak && currentStreak > 1;
 
@@ -260,7 +258,6 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
             });
           }
 
-          // 3. درج در آرایه چالش موز
           let statusEmoji = '🍆';
           let score = 1;
 
@@ -288,7 +285,6 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
           });
         }
 
-        // مرتب‌سازی چالش موزی
         bResults.sort((a, b) => {
           if (b.sortScore !== a.sortScore) {
             return (b.sortScore || 0) - (a.sortScore || 0);
@@ -296,7 +292,6 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
           return (b.targetMinutes || 0) - (a.targetMinutes || 0);
         });
 
-        // مرتب‌سازی استمرارها از بزرگ به کوچک
         sResults.sort((a, b) => (b.value || 0) - (a.value || 0));
 
         setBananaResults(bResults);

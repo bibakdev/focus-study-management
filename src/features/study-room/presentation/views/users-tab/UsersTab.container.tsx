@@ -27,10 +27,8 @@ const timeToMins = (time: TimeInput): number => {
   return h * 60 + m;
 };
 
-// تعریف سقف مجاز (۱۸ ساعت = ۱۰۸۰ دقیقه)
 const MAX_TARGET_MINUTES = 18 * 60;
 
-// نگاشت کلیدهای روزها به نام فارسی برای نمایش در خطای اعتبارسنجی
 const DAY_NAMES: Record<keyof UserFormData['weekly'], string> = {
   saturday: 'شنبه',
   sunday: 'یکشنبه',
@@ -95,13 +93,11 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
   const handleSaveUser = async (data: UserFormData) => {
     const trimmedName = data.name.trim();
 
-    // ۱. اعتبارسنجی نام
     if (!trimmedName) {
       Alert.alert('خطا', 'لطفاً نام کاربر را وارد کنید.');
       return;
     }
 
-    // ۲. اعتبارسنجی نام تکراری در دیتابیس
     const currentMembers = await db
       .select()
       .from(members)
@@ -110,7 +106,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
     const isDuplicate = currentMembers.some(
       (m) =>
         m.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
-        m.id !== editingUser?.member.id // نادیده گرفتن خود کاربر هنگام ویرایش
+        m.id !== editingUser?.member.id
     );
 
     if (isDuplicate) {
@@ -118,7 +114,6 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
       return;
     }
 
-    // ۳. اعتبارسنجی سقف ۱۸ ساعت برای تارگت‌ها
     if (data.targetType === 'FIXED') {
       if (timeToMins(data.defaultTime) > MAX_TARGET_MINUTES) {
         Alert.alert('خطا', 'تارگت مطالعه نمی‌تواند بیشتر از ۱۸ ساعت باشد.');
@@ -176,8 +171,13 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
           isActive: data.isActive,
           inBananaChallenge: data.inBananaChallenge,
           activeStreak: data.activeStreak,
+          highestActiveStreak: 0,
           absenceDays: data.absenceDays,
           consecutiveEggplants: 0,
+          personalRecordMinutes: 0,
+          totalCheckmarks: 0,
+          totalBananas: 0,
+          totalEggplants: 0,
           joinedAt: new Date()
         });
 

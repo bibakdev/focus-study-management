@@ -39,6 +39,9 @@ expoDb.execSync(`
     absence_days INTEGER NOT NULL DEFAULT 0,
     consecutive_eggplants INTEGER NOT NULL DEFAULT 0,
     personal_record_minutes INTEGER NOT NULL DEFAULT 0,
+    total_checkmarks INTEGER NOT NULL DEFAULT 0,
+    total_bananas INTEGER NOT NULL DEFAULT 0,
+    total_eggplants INTEGER NOT NULL DEFAULT 0,
     joined_at INTEGER NOT NULL
   );
 
@@ -77,7 +80,10 @@ const migrations = [
   'ALTER TABLE members ADD COLUMN consecutive_eggplants INTEGER NOT NULL DEFAULT 0;',
   'ALTER TABLE members ADD COLUMN personal_record_minutes INTEGER NOT NULL DEFAULT 0;',
   'ALTER TABLE groups ADD COLUMN telegram_topic_link TEXT;',
-  'ALTER TABLE members ADD COLUMN highest_active_streak INTEGER NOT NULL DEFAULT 0;'
+  'ALTER TABLE members ADD COLUMN highest_active_streak INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN total_checkmarks INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN total_bananas INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN total_eggplants INTEGER NOT NULL DEFAULT 0;'
 ];
 
 for (const query of migrations) {

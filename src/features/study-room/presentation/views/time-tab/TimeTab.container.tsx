@@ -20,7 +20,6 @@ import {
 import { FinalLog } from '../../components/FinalLogsList';
 import { TimeTabPresentational } from './TimeTab.presentational';
 
-// معرفی Use Case برای محاسبه غیبت‌ها
 const memberStatusRepo = new MemberStatusRepositoryImpl();
 const calculateAbsenceUseCase = new CalculateAbsenceUseCase(memberStatusRepo);
 
@@ -107,7 +106,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     }
   }, [savedDates, activeDate, isEditing]);
 
-  // متد کمکی برای اجرای محاسبه پس از هر تغییر
   const recalculateAbsence = async () => {
     try {
       await calculateAbsenceUseCase.execute(groupId);
@@ -138,7 +136,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       setActiveDate(date);
       setActiveDateId(currentId);
 
-      await recalculateAbsence(); // محاسبه پس از اضافه کردن تاریخ جدید
+      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ذخیره تاریخ رخ داد.');
     }
@@ -182,8 +180,13 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
             isActive: true,
             inBananaChallenge: false,
             activeStreak: 0,
+            highestActiveStreak: 0,
             absenceDays: 0,
             consecutiveEggplants: 0,
+            personalRecordMinutes: 0,
+            totalCheckmarks: 0,
+            totalBananas: 0,
+            totalEggplants: 0,
             joinedAt: new Date()
           });
           await db.insert(memberTargets).values({
@@ -191,7 +194,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
             memberId: finalMemberId,
             groupId,
             targetType: 'FIXED',
-            defaultMinutes: 120
+            defaultMinutes: 0
           });
         }
       }
@@ -209,7 +212,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       if (existingLog.length > 0) {
         Alert.alert(
           'تداخل نام',
-          'کاربری با این نام قبلاً در لیست نهایی امروز ثبت شده است. لطفاً برای ثبت شخص جدید، نام او را تغییر دهید.'
+          'کاربری با این نام قبلاً در لیست نهایی امروز ثبت شده است.'
         );
         return;
       }
@@ -223,7 +226,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       });
 
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence(); // محاسبه پس از ثبت تایم دستی
+      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ثبت زمان به وجود آمد.');
     } finally {
@@ -341,8 +344,13 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         isActive: true,
         inBananaChallenge: false,
         activeStreak: 0,
+        highestActiveStreak: 0,
         absenceDays: 0,
         consecutiveEggplants: 0,
+        personalRecordMinutes: 0,
+        totalCheckmarks: 0,
+        totalBananas: 0,
+        totalEggplants: 0,
         joinedAt: new Date()
       });
       await db.insert(memberTargets).values({
@@ -350,7 +358,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         memberId: targetMemberId,
         groupId,
         targetType: 'FIXED',
-        defaultMinutes: 120
+        defaultMinutes: 0
       });
     }
 
@@ -387,13 +395,10 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         );
       }
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence(); // محاسبه پس از تایید تکی
+      await recalculateAbsence();
     } catch (error: any) {
       if (error.message === 'DUPLICATE_LOG') {
-        Alert.alert(
-          'تداخل نام',
-          'این کاربر قبلاً در لیست نهایی امروز ثبت شده است. برای ثبت شخص جدید، ابتدا با زدن آیکون مداد نام او را تغییر دهید.'
-        );
+        Alert.alert('تداخل نام', 'کاربر قبلاً در لیست نهایی ثبت شده است.');
       } else {
         Alert.alert('خطا', 'مشکلی در ثبت کاربر پیش آمد.');
       }
@@ -419,22 +424,20 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         }
       }
 
-      if (type === 'OLD') {
+      if (type === 'OLD')
         setOldUsers((prev) => prev.filter((u) => !successfulIds.has(u.id)));
-      }
-      if (type === 'NEW') {
+      if (type === 'NEW')
         setNewUsers((prev) => prev.filter((u) => !successfulIds.has(u.id)));
-      }
 
       if (failedNames.length > 0) {
         Alert.alert(
           'تداخل نام',
-          `کاربران زیر قبلاً در لیست نهایی امروز ثبت شده‌اند و اضافه نشدند. در صورت نیاز با زدن آیکون مداد نام آن‌ها را تغییر دهید:\n\n${failedNames.join(', ')}`
+          `کاربران زیر قبلاً ثبت شده‌اند:\n\n${failedNames.join(', ')}`
         );
       }
 
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence(); // محاسبه پس از تایید همه
+      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ثبت گروهی پیش آمد.');
     }
@@ -491,7 +494,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     try {
       await db.delete(studyLogs).where(eq(studyLogs.id, logId));
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence(); // محاسبه پس از حذف لاگ
+      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در حذف لاگ پیش آمد.');
     }
@@ -505,7 +508,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
   ) => {
     try {
       const trimmedName = newName.trim();
-
       const currentMembers = await db
         .select()
         .from(members)
@@ -518,10 +520,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       );
 
       if (isDuplicate) {
-        Alert.alert(
-          'تداخل نام',
-          'این نام قبلاً برای شخص دیگری ثبت شده است. امکان تغییر نام به نام‌های تکراری وجود ندارد.'
-        );
+        Alert.alert('تداخل نام', 'این نام قبلاً ثبت شده است.');
         return;
       }
 
@@ -529,16 +528,15 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         .update(studyLogs)
         .set({ studyMinutes: newMinutes })
         .where(eq(studyLogs.id, logId));
-
       await db
         .update(members)
         .set({ name: trimmedName })
         .where(eq(members.id, memberId));
 
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence(); // محاسبه پس از ویرایش لاگ
+      await recalculateAbsence();
     } catch (error) {
-      Alert.alert('خطا', 'مشکلی در ویرایش اطلاعات در دیتابیس پیش آمد.');
+      Alert.alert('خطا', 'مشکلی در ویرایش اطلاعات پیش آمد.');
     }
   };
 
