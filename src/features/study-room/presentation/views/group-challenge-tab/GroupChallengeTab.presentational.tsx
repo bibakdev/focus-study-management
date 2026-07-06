@@ -65,10 +65,13 @@ export function GroupChallengeTabPresentational({
             )}
 
             {isChallengeFinished && dummyWinnerData ? (
+              // 🔴 ارسال پراپ‌های تلگرام به بورد نتایج نهایی
               <ChallengeResultsBoard
                 winningTeamName={dummyWinnerData.teamName}
                 topMembers={dummyWinnerData.topMembers}
                 onReset={onResetChallenge}
+                initialTopicLink={topicLink}
+                onTopicLinkSave={onTopicLinkSave}
               />
             ) : isChallengeActive ? (
               <ActiveChallengeBoard
@@ -77,9 +80,10 @@ export function GroupChallengeTabPresentational({
                 }
                 duration={challengeSettings?.duration || 5}
                 onEndChallenge={onEndChallenge}
+                initialTopicLink={topicLink}
+                onTopicLinkSave={onTopicLinkSave}
               />
             ) : hasStartedChallenge && challengeSettings ? (
-              // ارسال پراپ‌های اشتراک‌گذاری به بورد
               <TeamAllocationBoard
                 teamNames={challengeSettings.teams}
                 onFinalStart={onStartFinalChallenge}
