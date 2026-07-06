@@ -1,3 +1,4 @@
+// src/features/study-room/presentation/views/ranking-tab/RankingTab.container.tsx
 import { db } from '@/core/database/db';
 import { groupDates, groups, members, studyLogs } from '@/core/database/schema';
 import { generateUUID } from '@/core/utils/uuid';
@@ -24,12 +25,13 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
   const [minFilterMinutes, setMinFilterMinutes] = useState<number>(120);
   const [isFilterModalOpen, setIsFilterModalOpen] = useState<boolean>(false);
 
-  // دریافت اطلاعات گروه برای استخراج لینک ذخیره شده تاپیک
+  // دریافت اطلاعات گروه
   const { data: groupData } = useLiveQuery(
     db.select().from(groups).where(eq(groups.id, groupId))
   );
   const currentGroup = groupData?.[0];
 
+  // دریافت تمام تاریخ‌های گروه
   const { data: savedDates } = useLiveQuery(
     db
       .select()
@@ -38,6 +40,13 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
       .orderBy(desc(groupDates.createdAt))
   );
 
+  // 🔴 راه‌حل قطعی: دریافت ساده و مستقل جداول برای کارکرد صحیح LiveQuery در حالت Update
+  const { data: allMembers } = useLiveQuery(
+    db.select().from(members).where(eq(members.groupId, groupId))
+  );
+  const { data: allLogs } = useLiveQuery(db.select().from(studyLogs));
+
+  // تنظیم تاریخ پیش‌فرض
   useEffect(() => {
     if (savedDates && savedDates.length > 0 && !activeDate && !isEditing) {
       setActiveDate(savedDates[0].persianDate);
@@ -45,81 +54,88 @@ export function RankingTabContainer({ groupId }: RankingTabContainerProps) {
     }
   }, [savedDates, activeDate, isEditing]);
 
-  // دریافت اطلاعات و محاسبه پویا برای رتبه‌بندی و رکوردشکنی
+  // محاسبه رتبه‌بندی‌ها به صورت کاملاً زنده (Reactive)
   useEffect(() => {
-    if (!activeDateId) {
+    if (!activeDateId || !allLogs || !allMembers || !savedDates) {
       setAllChampions([]);
       setRecordBreakers([]);
       return;
     }
 
-    const fetchRankings = async () => {
-      try {
-        const allGroupLogs = await db
-          .select({
-            id: studyLogs.id,
-            memberId: studyLogs.memberId,
-            name: members.name,
-            studyMinutes: studyLogs.studyMinutes,
-            groupDateId: studyLogs.groupDateId
-          })
-          .from(studyLogs)
-          .innerJoin(members, eq(studyLogs.memberId, members.id))
-          .innerJoin(groupDates, eq(studyLogs.groupDateId, groupDates.id))
-          .where(eq(groupDates.groupId, groupId));
+    try {
+      // ۱. استخراج شناسه‌های تاریخ‌های مربوط به این گروه
+      const groupDateIds = new Set(savedDates.map((d) => d.id));
 
-        const todayLogs = allGroupLogs.filter(
-          (log) => log.groupDateId === activeDateId
-        );
-        const historicalLogs = allGroupLogs.filter(
-          (log) => log.groupDateId !== activeDateId
+      // ۲. فیلتر کردن لاگ‌ها فقط برای این گروه
+      const groupLogs = allLogs.filter((log) =>
+        groupDateIds.has(log.groupDateId)
+      );
+
+      // ۳. جداسازی لاگ‌های امروز از لاگ‌های گذشته
+      const todayLogsRaw = groupLogs.filter(
+        (log) => log.groupDateId === activeDateId
+      );
+      const historicalLogsRaw = groupLogs.filter(
+        (log) => log.groupDateId !== activeDateId
+      );
+
+      // ۴. اتصال نام کاربران (Join دستی در حافظه)
+      const todayLogs = todayLogsRaw.map((log) => {
+        const member = allMembers.find((m) => m.id === log.memberId);
+        return {
+          id: log.id,
+          memberId: log.memberId,
+          name: member ? member.name : 'کاربر نامشخص',
+          studyMinutes: log.studyMinutes
+        };
+      });
+
+      // ۵. مرتب‌سازی لیست قهرمانان
+      const sortedChampions: RankingItem[] = todayLogs
+        .sort((a, b) => b.studyMinutes - a.studyMinutes)
+        .map((log) => ({
+          id: log.id,
+          name: log.name,
+          timeMinutes: log.studyMinutes
+        }));
+
+      // ۶. محاسبه رکورد شکنان
+      const breakers: RankingItem[] = [];
+
+      for (const log of todayLogs) {
+        const pastLogs = historicalLogsRaw.filter(
+          (l) => l.memberId === log.memberId
         );
 
-        const sortedChampions: RankingItem[] = todayLogs
-          .sort((a, b) => b.studyMinutes - a.studyMinutes)
-          .map((log) => ({
-            id: log.id,
+        const bestPastRecord =
+          pastLogs.length > 0
+            ? Math.max(...pastLogs.map((l) => l.studyMinutes))
+            : 0;
+
+        if (bestPastRecord > 0 && log.studyMinutes > bestPastRecord) {
+          breakers.push({
+            id: `breaker_${log.id}`,
             name: log.name,
-            timeMinutes: log.studyMinutes
-          }));
-
-        const breakers: RankingItem[] = [];
-
-        for (const log of todayLogs) {
-          const pastLogs = historicalLogs.filter(
-            (l) => l.memberId === log.memberId
-          );
-
-          const bestPastRecord =
-            pastLogs.length > 0
-              ? Math.max(...pastLogs.map((l) => l.studyMinutes))
-              : 0;
-
-          if (bestPastRecord > 0 && log.studyMinutes > bestPastRecord) {
-            breakers.push({
-              id: `breaker_${log.id}`,
-              name: log.name,
-              timeMinutes: log.studyMinutes,
-              oldRecordMinutes: bestPastRecord
-            });
-          }
+            timeMinutes: log.studyMinutes,
+            oldRecordMinutes: bestPastRecord
+          });
         }
-
-        breakers.sort((a, b) => {
-          const improvementA = a.timeMinutes - (a.oldRecordMinutes || 0);
-          const improvementB = b.timeMinutes - (b.oldRecordMinutes || 0);
-          return improvementB - improvementA;
-        });
-
-        setAllChampions(sortedChampions);
-        setRecordBreakers(breakers);
-      } catch (error) {
-        console.error('Error fetching rankings:', error);
       }
-    };
 
-    fetchRankings();
-  }, [activeDateId, groupId]);
+      // مرتب‌سازی رکورد شکنان بر اساس بیشترین میزان پیشرفت
+      breakers.sort((a, b) => {
+        const improvementA = a.timeMinutes - (a.oldRecordMinutes || 0);
+        const improvementB = b.timeMinutes - (b.oldRecordMinutes || 0);
+        return improvementB - improvementA;
+      });
+
+      // به‌روزرسانی استیت‌ها
+      setAllChampions(sortedChampions);
+      setRecordBreakers(breakers);
+    } catch (error) {
+      console.error('Error fetching rankings:', error);
+    }
+  }, [activeDateId, allLogs, allMembers, savedDates]);
 
   const handleConfirmDate = async (date: string) => {
     try {
