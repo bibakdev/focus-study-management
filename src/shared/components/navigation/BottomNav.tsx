@@ -1,9 +1,13 @@
-import React from 'react';
-import { View, Text, Pressable } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
+import { Pressable, Text, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-export type TabType = 'users' | 'time' | 'ranking' | 'banana';
+export type TabType =
+  | 'users'
+  | 'time'
+  | 'ranking'
+  | 'banana'
+  | 'group-challenge';
 
 interface BottomNavProps {
   activeTab: TabType;
@@ -13,7 +17,6 @@ interface BottomNavProps {
 export function BottomNav({ activeTab, onTabPress }: BottomNavProps) {
   const insets = useSafeAreaInsets();
 
-  // تعریف ساختار آیتم‌های نوار ناوبری
   const tabs = [
     {
       id: 'users',
@@ -33,13 +36,14 @@ export function BottomNav({ activeTab, onTabPress }: BottomNavProps) {
       activeIcon: 'trophy',
       inactiveIcon: 'trophy-outline'
     },
-    { id: 'banana', label: 'چالش موزی', isEmoji: true, emoji: '🍌' }
+    { id: 'banana', label: 'چالش موزی', isEmoji: true, emoji: '🍌' },
+    { id: 'group-challenge', label: 'رقابت تیمی', isEmoji: true, emoji: '⚔️' }
   ] as const;
 
   return (
     <View
       className="absolute bottom-0 left-0 right-0 bg-surface-card border-t border-surface-muted rounded-t-3xl flex-row justify-around items-center pt-3 shadow-lg z-20"
-      style={{ paddingBottom: Math.max(insets.bottom, 16) }} // رعایت فاصله ایمن در پایین صفحه
+      style={{ paddingBottom: Math.max(insets.bottom, 16) }}
     >
       {tabs.map((tab) => {
         const isActive = activeTab === tab.id;
@@ -50,7 +54,6 @@ export function BottomNav({ activeTab, onTabPress }: BottomNavProps) {
             onPress={() => onTabPress(tab.id as TabType)}
             className="flex-1 items-center justify-center active:scale-95 transition-transform"
           >
-            {/* محفظه آیکون با افکت کپسولی در حالت فعال */}
             <View
               className={`items-center justify-center w-14 h-8 rounded-full mb-1 transition-colors ${
                 isActive ? 'bg-primary-light/50' : 'bg-transparent'
@@ -66,12 +69,11 @@ export function BottomNav({ activeTab, onTabPress }: BottomNavProps) {
                 <Ionicons
                   name={isActive ? tab.activeIcon : tab.inactiveIcon}
                   size={22}
-                  color={isActive ? '#4f46e5' : '#64748b'} // primary-main vs text-muted
+                  color={isActive ? '#4f46e5' : '#64748b'}
                 />
               )}
             </View>
 
-            {/* عنوان آیتم */}
             <Text
               className={`text-[10px] font-main font-bold transition-colors ${
                 isActive ? 'text-primary-main' : 'text-text-muted'
