@@ -1,3 +1,4 @@
+// src/core/database/schema.ts
 import { relations } from 'drizzle-orm';
 import { index, integer, sqliteTable, text } from 'drizzle-orm/sqlite-core';
 
@@ -38,6 +39,10 @@ export const members = sqliteTable(
     inBananaChallenge: integer('in_banana_challenge', { mode: 'boolean' })
       .notNull()
       .default(true),
+    isManualOptOut: integer('is_manual_opt_out', { mode: 'boolean' })
+      .notNull()
+      .default(false),
+    lastForgivenDate: text('last_forgiven_date'),
     activeStreak: integer('active_streak').notNull().default(0),
     highestActiveStreak: integer('highest_active_streak').notNull().default(0),
     absenceDays: integer('absence_days').notNull().default(0),

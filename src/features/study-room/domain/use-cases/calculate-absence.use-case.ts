@@ -1,24 +1,6 @@
-import { getPersianWeekday } from '@/core/utils/date';
+// src/features/study-room/domain/use-cases/calculate-absence.use-case.ts
+import { getPersianDateStr, getPersianWeekday } from '@/core/utils/date';
 import { MemberStatusRepository } from '../repositories/member-status.repository';
-
-const getPersianDateStr = (date: Date) => {
-  try {
-    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
-      calendar: 'persian',
-      timeZone: 'Asia/Tehran',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    const parts = formatter.formatToParts(date);
-    const year = parts.find((p) => p.type === 'year')?.value;
-    const month = parts.find((p) => p.type === 'month')?.value.padStart(2, '0');
-    const day = parts.find((p) => p.type === 'day')?.value.padStart(2, '0');
-    return `${year}/${month}/${day}`;
-  } catch (e) {
-    return '1400/01/01';
-  }
-};
 
 export class CalculateAbsenceUseCase {
   constructor(private readonly repository: MemberStatusRepository) {}
@@ -39,15 +21,13 @@ export class CalculateAbsenceUseCase {
       let totalCheckmarks = 0;
       let totalBananas = 0;
       let totalEggplants = 0;
+      let consecutiveEggplants = 0;
       let isActive = true;
 
+      let currentlyInChallenge = !member.isManualOptOut;
       const targetData = targets.find((t) => t.memberId === member.id);
-      const isChallenging =
-        member.inBananaChallenge === true || member.inBananaChallenge === 1;
-
       const memberJoinPersian = getPersianDateStr(new Date(member.joinedAt));
 
-      // فقط روزهایی که از تاریخ عضویت به بعد بوده‌اند یا در آن‌ها لاگ ثبت شده محاسبه می‌شوند
       const validDates = dates.filter((d) => {
         return (
           d.persianDate >= memberJoinPersian ||
@@ -56,6 +36,14 @@ export class CalculateAbsenceUseCase {
       });
 
       for (const date of validDates) {
+        if (
+          member.lastForgivenDate &&
+          date.persianDate === member.lastForgivenDate
+        ) {
+          consecutiveEggplants = 0;
+          currentlyInChallenge = true;
+        }
+
         const hasLog = logs.find(
           (l) => l.memberId === member.id && l.groupDateId === date.id
         );
@@ -95,37 +83,62 @@ export class CalculateAbsenceUseCase {
           }
         }
 
-        if (!isChallenging || dailyTarget === 0) {
+        if (dailyTarget === 0) {
           activeStreak = 0;
           absenceDays = 0;
           isActive = true;
           continue;
         }
 
+        // ۱. آپدیت استمرار و غیبت کلی
         if (mins >= dailyTarget) {
           absenceDays = 0;
           activeStreak += 1;
           highestActiveStreak = Math.max(highestActiveStreak, activeStreak);
           isActive = true;
-
-          totalCheckmarks += 1;
         } else if (mins > 0) {
           absenceDays = 0;
           activeStreak = 0;
           isActive = true;
-
-          if (mins >= bananaThreshold) {
-            totalBananas += 1;
-          } else {
-            totalEggplants += 1;
-          }
         } else {
           absenceDays += 1;
           activeStreak = 0;
           isActive = false;
-
-          totalEggplants += 1; // 0 دقیقه هم یک بادمجان محسوب می‌شود
         }
+
+        // ۲. آپدیت المان‌های چالش
+        if (currentlyInChallenge) {
+          if (mins >= dailyTarget) {
+            totalCheckmarks += 1;
+            consecutiveEggplants = 0;
+          } else if (mins >= bananaThreshold) {
+            totalBananas += 1;
+            consecutiveEggplants = 0;
+          } else {
+            totalEggplants += 1;
+            consecutiveEggplants += 1;
+          }
+
+          if (consecutiveEggplants >= group.maxEggplantsAllowed) {
+            currentlyInChallenge = false;
+          }
+        }
+      }
+
+      const lastProcessedDate =
+        validDates.length > 0
+          ? validDates[validDates.length - 1].persianDate
+          : null;
+      if (
+        member.lastForgivenDate &&
+        (!lastProcessedDate || member.lastForgivenDate > lastProcessedDate)
+      ) {
+        currentlyInChallenge = true;
+        consecutiveEggplants = 0;
+      }
+
+      if (member.isManualOptOut) {
+        currentlyInChallenge = false;
       }
 
       return {
@@ -137,7 +150,8 @@ export class CalculateAbsenceUseCase {
         personalRecordMinutes,
         totalCheckmarks,
         totalBananas,
-        totalEggplants
+        totalEggplants,
+        inBananaChallenge: currentlyInChallenge
       };
     });
 

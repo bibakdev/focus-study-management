@@ -1,5 +1,7 @@
+// src/features/study-room/presentation/views/users-tab/UsersTab.container.tsx
 import { db } from '@/core/database/db';
 import { groups, members, memberTargets } from '@/core/database/schema';
+import { getPersianDateStr } from '@/core/utils/date';
 import { generateUUID } from '@/core/utils/uuid';
 import { desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
@@ -28,7 +30,6 @@ const timeToMins = (time: TimeInput): number => {
   return h * 60 + m;
 };
 
-// تابع کمکی برای تبدیل دقیقه به متن خوانا (مثلا 2 ساعت و 30 دقیقه)
 const formatMinToFa = (mins: number) => {
   const h = Math.floor(mins / 60);
   const m = mins % 60;
@@ -58,7 +59,6 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
     target: MemberTarget;
   } | null>(null);
 
-  // دریافت تنظیمات گروه برای ولیدیشن چالش موز
   const { data: groupData } = useLiveQuery(
     db.select().from(groups).where(eq(groups.id, groupId))
   );
@@ -133,11 +133,8 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
 
     const thresholdStr = formatMinToFa(bananaThreshold);
 
-    // 🔴 ولیدیشن تارگت‌ها (حداکثر زمان و حداقل زمان چالش موز)
     if (data.targetType === 'FIXED') {
       const mins = timeToMins(data.defaultTime);
-
-      // اگر تایم ۰ باشد یعنی روز استراحت است، اما اگر بزرگتر از ۰ باشد نباید از تارگت موز کمتر باشد
       if (mins > 0 && mins < bananaThreshold) {
         Alert.alert(
           'خطای تارگت',
@@ -145,7 +142,6 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
         );
         return;
       }
-
       if (mins > MAX_TARGET_MINUTES) {
         Alert.alert('خطا', 'تارگت مطالعه نمی‌تواند بیشتر از ۱۸ ساعت باشد.');
         return;
@@ -155,7 +151,6 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
         const mins = timeToMins(
           data.weekly[dayKey as keyof UserFormData['weekly']]
         );
-
         if (mins > 0 && mins < bananaThreshold) {
           Alert.alert(
             'خطای تارگت',
@@ -163,7 +158,6 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
           );
           return;
         }
-
         if (mins > MAX_TARGET_MINUTES) {
           Alert.alert(
             'خطا',
@@ -177,6 +171,29 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
     try {
       let activeMemberId = '';
 
+      let isManualOptOut = false;
+      let lastForgivenDate: string | null = null;
+
+      if (editingUser) {
+        // اجبار استفاده از Boolean برای جلوگیری از خطای تبدیل 0 و 1 دیتابیس
+        const oldStatus = !!editingUser.member.inBananaChallenge;
+        const newStatus = !!data.inBananaChallenge;
+
+        isManualOptOut = !!editingUser.member.isManualOptOut;
+        lastForgivenDate = editingUser.member.lastForgivenDate || null;
+
+        if (oldStatus !== newStatus) {
+          if (newStatus === false) {
+            isManualOptOut = true;
+          } else {
+            isManualOptOut = false;
+            lastForgivenDate = getPersianDateStr(new Date());
+          }
+        }
+      } else {
+        if (data.inBananaChallenge === false) isManualOptOut = true;
+      }
+
       if (editingUser) {
         activeMemberId = editingUser.member.id;
         await db
@@ -185,6 +202,8 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
             name: trimmedName,
             isActive: data.isActive,
             inBananaChallenge: data.inBananaChallenge,
+            isManualOptOut: isManualOptOut,
+            lastForgivenDate: lastForgivenDate,
             activeStreak: data.activeStreak,
             absenceDays: data.absenceDays
           })
@@ -213,6 +232,8 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
           name: trimmedName,
           isActive: data.isActive,
           inBananaChallenge: data.inBananaChallenge,
+          isManualOptOut: isManualOptOut,
+          lastForgivenDate: lastForgivenDate,
           activeStreak: data.activeStreak,
           highestActiveStreak: 0,
           absenceDays: data.absenceDays,
@@ -240,7 +261,6 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
         });
       }
 
-      // اجرای هوک افزایشی فقط برای همین کاربر برای آپدیت اعداد در دیتابیس
       await calculateSingleMemberStats(groupId, activeMemberId);
 
       handleCloseModal();

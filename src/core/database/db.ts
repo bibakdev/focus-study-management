@@ -1,3 +1,4 @@
+// src/core/database/db.ts
 import { drizzle } from 'drizzle-orm/expo-sqlite';
 import { openDatabaseSync } from 'expo-sqlite';
 import * as schema from './schema';
@@ -34,6 +35,8 @@ expoDb.execSync(`
     name TEXT NOT NULL,
     is_active INTEGER NOT NULL DEFAULT 1,
     in_banana_challenge INTEGER NOT NULL DEFAULT 1,
+    is_manual_opt_out INTEGER NOT NULL DEFAULT 0,
+    last_forgiven_date TEXT,
     active_streak INTEGER NOT NULL DEFAULT 0,
     highest_active_streak INTEGER NOT NULL DEFAULT 0,
     absence_days INTEGER NOT NULL DEFAULT 0,
@@ -83,7 +86,9 @@ const migrations = [
   'ALTER TABLE members ADD COLUMN highest_active_streak INTEGER NOT NULL DEFAULT 0;',
   'ALTER TABLE members ADD COLUMN total_checkmarks INTEGER NOT NULL DEFAULT 0;',
   'ALTER TABLE members ADD COLUMN total_bananas INTEGER NOT NULL DEFAULT 0;',
-  'ALTER TABLE members ADD COLUMN total_eggplants INTEGER NOT NULL DEFAULT 0;'
+  'ALTER TABLE members ADD COLUMN total_eggplants INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN is_manual_opt_out INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN last_forgiven_date TEXT;'
 ];
 
 for (const query of migrations) {

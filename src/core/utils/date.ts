@@ -1,3 +1,4 @@
+// src/core/utils/date.ts
 export const getPersianWeekday = (dateStr: string): string => {
   const parts = dateStr.split('/');
   if (parts.length !== 3) return '';
@@ -54,4 +55,23 @@ export const getPersianWeekday = (dateStr: string): string => {
   if (wd < 0) wd += 7;
 
   return weekdays[wd];
+};
+
+export const getPersianDateStr = (date: Date): string => {
+  try {
+    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
+      calendar: 'persian',
+      timeZone: 'Asia/Tehran',
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit'
+    });
+    const parts = formatter.formatToParts(date);
+    const year = parts.find((p) => p.type === 'year')?.value;
+    const month = parts.find((p) => p.type === 'month')?.value.padStart(2, '0');
+    const day = parts.find((p) => p.type === 'day')?.value.padStart(2, '0');
+    return `${year}/${month}/${day}`;
+  } catch (e) {
+    return '1400/01/01';
+  }
 };

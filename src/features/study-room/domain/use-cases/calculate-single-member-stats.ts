@@ -1,3 +1,4 @@
+// src/features/study-room/domain/use-cases/calculate-single-member-stats.ts
 import { db } from '@/core/database/db';
 import {
   groupDates,
@@ -6,27 +7,8 @@ import {
   memberTargets,
   studyLogs
 } from '@/core/database/schema';
-import { getPersianWeekday } from '@/core/utils/date';
+import { getPersianDateStr, getPersianWeekday } from '@/core/utils/date';
 import { asc, eq } from 'drizzle-orm';
-
-const getPersianDateStr = (date: Date) => {
-  try {
-    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
-      calendar: 'persian',
-      timeZone: 'Asia/Tehran',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    const parts = formatter.formatToParts(date);
-    const year = parts.find((p) => p.type === 'year')?.value;
-    const month = parts.find((p) => p.type === 'month')?.value.padStart(2, '0');
-    const day = parts.find((p) => p.type === 'day')?.value.padStart(2, '0');
-    return `${year}/${month}/${day}`;
-  } catch (e) {
-    return '1400/01/01';
-  }
-};
 
 export async function calculateSingleMemberStats(
   groupId: string,
@@ -75,9 +57,7 @@ export async function calculateSingleMemberStats(
   let consecutiveEggplants = 0;
   let isActive = true;
 
-  // وضعیت اولیه شرکت در چالش
-  let inBananaChallenge =
-    member.inBananaChallenge === true || member.inBananaChallenge === 1;
+  let currentlyInChallenge = !member.isManualOptOut;
   const memberJoinPersian = getPersianDateStr(new Date(member.joinedAt));
 
   const validDates = dates.filter((d) => {
@@ -89,7 +69,15 @@ export async function calculateSingleMemberStats(
 
   for (let i = 0; i < validDates.length; i++) {
     const date = validDates[i];
-    const isLastDate = i === validDates.length - 1;
+
+    // اگر کاربر در گذشته در این روز مورد بخشودگی قرار گرفته است
+    if (
+      member.lastForgivenDate &&
+      date.persianDate === member.lastForgivenDate
+    ) {
+      consecutiveEggplants = 0;
+      currentlyInChallenge = true;
+    }
 
     const hasLog = logs.find((l) => l.groupDateId === date.id);
     const mins = hasLog ? hasLog.studyMinutes : 0;
@@ -135,43 +123,59 @@ export async function calculateSingleMemberStats(
       continue;
     }
 
+    // ۱. آپدیت استمرار و غیبت کلی (حتی اگر از چالش حذف شده باشد)
     if (mins >= dailyTarget) {
       absenceDays = 0;
       activeStreak += 1;
       highestActiveStreak = Math.max(highestActiveStreak, activeStreak);
       isActive = true;
-      totalCheckmarks += 1;
-      consecutiveEggplants = 0;
     } else if (mins > 0) {
       absenceDays = 0;
       activeStreak = 0;
       isActive = true;
+    } else {
+      absenceDays += 1;
+      activeStreak = 0;
+      isActive = false;
+    }
 
-      if (mins >= group.bananaThreshold) {
+    // ۲. آپدیت المان‌های چالش موزی (فقط در صورتی که داخل چالش باشد)
+    if (currentlyInChallenge) {
+      if (mins >= dailyTarget) {
+        totalCheckmarks += 1;
+        consecutiveEggplants = 0;
+      } else if (mins >= group.bananaThreshold) {
         totalBananas += 1;
         consecutiveEggplants = 0;
       } else {
         totalEggplants += 1;
         consecutiveEggplants += 1;
       }
-    } else {
-      absenceDays += 1;
-      activeStreak = 0;
-      isActive = false;
-      totalEggplants += 1;
-      consecutiveEggplants += 1;
-    }
 
-    if (consecutiveEggplants >= group.maxEggplantsAllowed) {
-      if (member.inBananaChallenge) {
-        // اگر ادمین دستی روشن کرده باشد
-        if (isLastDate) {
-          inBananaChallenge = false; // امروز حذف شد
-        } else {
-          consecutiveEggplants = 0; // در گذشته حذف شده بوده اما ادمین بخشیده
-        }
+      // بررسی اخراج شدن
+      if (consecutiveEggplants >= group.maxEggplantsAllowed) {
+        currentlyInChallenge = false;
       }
     }
+  }
+
+  // جلوگیری از باگ روشن نشدن سوییچ:
+  // اگر ادمین کاربر را امروز بخشیده اما هنوز لاگی برای امروز باز نشده،
+  // سیستم باید مطمئن شود که او به چالش برگشته است.
+  const lastProcessedDate =
+    validDates.length > 0
+      ? validDates[validDates.length - 1].persianDate
+      : null;
+  if (
+    member.lastForgivenDate &&
+    (!lastProcessedDate || member.lastForgivenDate > lastProcessedDate)
+  ) {
+    currentlyInChallenge = true;
+    consecutiveEggplants = 0;
+  }
+
+  if (member.isManualOptOut) {
+    currentlyInChallenge = false;
   }
 
   await db
@@ -186,7 +190,7 @@ export async function calculateSingleMemberStats(
       totalBananas,
       totalEggplants,
       consecutiveEggplants,
-      inBananaChallenge
+      inBananaChallenge: currentlyInChallenge
     })
     .where(eq(members.id, memberId));
 }

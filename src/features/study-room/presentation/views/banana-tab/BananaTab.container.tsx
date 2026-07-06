@@ -1,10 +1,12 @@
+// src/features/study-room/presentation/views/banana-tab/BananaTab.container.tsx
 import { db } from '@/core/database/db';
-import { groupDates, groups } from '@/core/database/schema';
+import { groupDates, groups, members } from '@/core/database/schema';
 import { generateUUID } from '@/core/utils/uuid';
 import { and, desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import { calculateSingleMemberStats } from '../../../domain/use-cases/calculate-single-member-stats';
 import { BananaTabPresentational } from './BananaTab.presentational';
 import { useBananaDeltaCalculator } from './use-banana-calculator';
 
@@ -40,7 +42,6 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
     }
   }, [savedDates, activeDate, isEditingDate]);
 
-  // 🔥 استفاده از هوک فوق بهینه و افزایشی جدید
   const { bananaResults, streakResults } = useBananaDeltaCalculator(
     groupId,
     activeDateId,
@@ -95,6 +96,15 @@ export function BananaTabContainer({ groupId }: BananaTabContainerProps) {
           maxEggplantsAllowed: eggplants
         })
         .where(eq(groups.id, groupId));
+
+      // باز-محاسبه کردن تمام کاربران برای اعمال تغییرات جدید قوانین چالش در دیتابیس
+      const groupMembers = await db
+        .select()
+        .from(members)
+        .where(eq(members.groupId, groupId));
+      for (const m of groupMembers) {
+        await calculateSingleMemberStats(groupId, m.id);
+      }
     } catch (error) {
       console.error('Error updating banana challenge settings:', error);
       Alert.alert('خطا', 'مشکلی در بروزرسانی تنظیمات رخ داد.');

@@ -1,3 +1,4 @@
+// src/features/study-room/presentation/views/banana-tab/use-banana-calculator.ts
 import { db } from '@/core/database/db';
 import {
   groupDates,
@@ -5,32 +6,13 @@ import {
   memberTargets,
   studyLogs
 } from '@/core/database/schema';
-import { getPersianWeekday } from '@/core/utils/date';
+import { getPersianDateStr, getPersianWeekday } from '@/core/utils/date';
 import { asc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useRef, useState } from 'react';
 import { Group } from '../../../domain/entities/group';
 import { Member } from '../../../domain/entities/member';
 import { RankingItem } from '../../components/RankingSection';
-
-const getPersianDateStr = (date: Date) => {
-  try {
-    const formatter = new Intl.DateTimeFormat('fa-IR-u-nu-latn', {
-      calendar: 'persian',
-      timeZone: 'Asia/Tehran',
-      year: 'numeric',
-      month: '2-digit',
-      day: '2-digit'
-    });
-    const parts = formatter.formatToParts(date);
-    const year = parts.find((p) => p.type === 'year')?.value;
-    const month = parts.find((p) => p.type === 'month')?.value.padStart(2, '0');
-    const day = parts.find((p) => p.type === 'day')?.value.padStart(2, '0');
-    return `${year}/${month}/${day}`;
-  } catch (e) {
-    return '1400/01/01';
-  }
-};
 
 export function useBananaDeltaCalculator(
   groupId: string,
@@ -131,8 +113,15 @@ export function useBananaDeltaCalculator(
       let eliminatedDateId: string | null = null;
       let maxHistoricalStreak = 0;
       let currentStreak = 0;
+      let currentlyInChallenge = !m.isManualOptOut;
 
       for (const d of validDates) {
+        if (m.lastForgivenDate && d.persianDate === m.lastForgivenDate) {
+          consecutiveEggplants = 0;
+          currentlyInChallenge = true;
+          eliminatedDateId = null;
+        }
+
         const log = allHistoricalLogs.find(
           (l) => l.memberId === m.id && l.groupDateId === d.id
         );
@@ -175,43 +164,39 @@ export function useBananaDeltaCalculator(
           continue;
         }
 
+        // استمرار کلی
         if (mins >= dTarget) {
           currentStreak++;
-          consecutiveEggplants = 0;
         } else {
           currentStreak = 0;
-          if (mins >= currentGroup.bananaThreshold) {
-            consecutiveEggplants = 0;
-          } else {
-            consecutiveEggplants++;
-          }
         }
 
         if (d.persianDate < activeDate) {
           maxHistoricalStreak = Math.max(maxHistoricalStreak, currentStreak);
         }
 
-        if (consecutiveEggplants >= currentGroup.maxEggplantsAllowed) {
-          if (m.inBananaChallenge) {
-            // اگر ادمین دکمه را روشن کرده باشد (بخشودگی)
-            if (d.id === activeDateId) {
-              eliminatedDateId = d.id;
-            } else {
-              consecutiveEggplants = 0;
-            }
+        // بخش چالش
+        if (currentlyInChallenge) {
+          if (mins >= dTarget) {
+            consecutiveEggplants = 0;
+          } else if (mins >= currentGroup.bananaThreshold) {
+            consecutiveEggplants = 0;
           } else {
+            consecutiveEggplants++;
+          }
+
+          if (consecutiveEggplants >= currentGroup.maxEggplantsAllowed) {
+            currentlyInChallenge = false;
             if (eliminatedDateId === null) eliminatedDateId = d.id;
           }
         }
       }
 
+      const getsEliminatedToday = eliminatedDateId === activeDateId;
       const wasEliminatedBefore =
         eliminatedDateId !== null && eliminatedDateId !== activeDateId;
-      const getsEliminatedToday = eliminatedDateId === activeDateId;
-      const manuallyOptedOut =
-        !m.inBananaChallenge && eliminatedDateId === null;
+      const manuallyOptedOut = m.isManualOptOut;
 
-      // اگر کاربر کلا در چالش نیست یا قبلاً حذف شده نمایش داده نشود
       if (wasEliminatedBefore || manuallyOptedOut) {
         return { bItem: null, sItem: null };
       }

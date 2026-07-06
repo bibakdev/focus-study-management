@@ -1,3 +1,4 @@
+// src/features/study-room/presentation/components/UserFormModal.tsx
 import { PrimaryActionButton } from '@/shared/components/buttons/PrimaryActionButton';
 import { SecondaryButton } from '@/shared/components/buttons/SecondaryButton';
 import { TextInputWithIcon } from '@/shared/components/inputs/TextInputWithIcon';
@@ -72,8 +73,12 @@ export function UserFormModal({
     if (initialData && visible) {
       setFormData({
         name: initialData.member.name,
-        isActive: initialData.member.isActive,
-        inBananaChallenge: initialData.member.inBananaChallenge ?? true,
+        isActive: !!initialData.member.isActive,
+        // اینجا با استفاده از !! مطمئن می‌شویم مقادیر 0 و 1 به true و false تبدیل می‌شوند
+        inBananaChallenge:
+          initialData.member.inBananaChallenge !== undefined
+            ? !!initialData.member.inBananaChallenge
+            : true,
         activeStreak: initialData.member.activeStreak,
         absenceDays: initialData.member.absenceDays || 0,
         targetType: initialData.target?.targetType || 'FIXED',

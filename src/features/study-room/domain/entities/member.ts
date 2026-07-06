@@ -1,9 +1,12 @@
+// src/features/study-room/domain/entities/member.ts
 export interface Member {
   id: string;
   groupId: string;
   name: string;
   isActive: boolean;
   inBananaChallenge: boolean;
+  isManualOptOut?: boolean;
+  lastForgivenDate?: string | null;
   activeStreak: number;
   highestActiveStreak: number;
   absenceDays: number;
