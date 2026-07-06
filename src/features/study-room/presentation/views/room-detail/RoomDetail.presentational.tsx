@@ -2,7 +2,7 @@ import { BottomNav, TabType } from '@/shared/components/navigation/BottomNav';
 import { View } from 'react-native';
 import { Group } from '../../../domain/entities/group';
 import { RoomHeader } from '../../components/RoomHeader';
-import { BananaTab } from '../banana-tab'; // <--- تب چالش موز ایمپورت شد
+import { BananaTab } from '../banana-tab';
 import { RankingTab } from '../ranking-tab';
 import { TimeTab } from '../time-tab';
 import { UsersTab } from '../users-tab';
@@ -34,24 +34,23 @@ export function RoomDetailPresentational({
         onManageGroupsPress={onManageGroupsPress}
       />
 
-      {/* 2. بلوک محتوای اصلی */}
+      {/* 2. بلوک محتوای اصلی (پشتیبانی از تب‌های زنده با استفاده از کلاس hidden) */}
       <View className="flex-1 px-5 z-0">
-        {currentGroup && activeTab === 'users' && (
-          <UsersTab groupId={currentGroup.id} />
-        )}
+        <View className={activeTab === 'users' ? 'flex-1' : 'hidden'}>
+          {currentGroup && <UsersTab groupId={currentGroup.id} />}
+        </View>
 
-        {currentGroup && activeTab === 'time' && (
-          <TimeTab groupId={currentGroup.id} />
-        )}
+        <View className={activeTab === 'time' ? 'flex-1' : 'hidden'}>
+          {currentGroup && <TimeTab groupId={currentGroup.id} />}
+        </View>
 
-        {currentGroup && activeTab === 'ranking' && (
-          <RankingTab groupId={currentGroup.id} />
-        )}
+        <View className={activeTab === 'ranking' ? 'flex-1' : 'hidden'}>
+          {currentGroup && <RankingTab groupId={currentGroup.id} />}
+        </View>
 
-        {/* <--- رندر تب چالش موزی ---> */}
-        {currentGroup && activeTab === 'banana' && (
-          <BananaTab groupId={currentGroup.id} />
-        )}
+        <View className={activeTab === 'banana' ? 'flex-1' : 'hidden'}>
+          {currentGroup && <BananaTab groupId={currentGroup.id} />}
+        </View>
       </View>
 
       {/* 3. بلوک نوار ناوبری پایین (Footer) */}

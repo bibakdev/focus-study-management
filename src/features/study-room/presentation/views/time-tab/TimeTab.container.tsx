@@ -10,18 +10,14 @@ import { and, desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
-import { MemberStatusRepositoryImpl } from '../../../data/repositories/member-status.repository.impl';
 import { Member } from '../../../domain/entities/member';
-import { CalculateAbsenceUseCase } from '../../../domain/use-cases/calculate-absence.use-case';
+import { calculateSingleMemberStats } from '../../../domain/use-cases/calculate-single-member-stats';
 import {
   ConflictGroup,
   ExtractedRecord
 } from '../../components/ExtractedUsersList';
 import { FinalLog } from '../../components/FinalLogsList';
 import { TimeTabPresentational } from './TimeTab.presentational';
-
-const memberStatusRepo = new MemberStatusRepositoryImpl();
-const calculateAbsenceUseCase = new CalculateAbsenceUseCase(memberStatusRepo);
 
 interface TimeTabContainerProps {
   groupId: string;
@@ -106,14 +102,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     }
   }, [savedDates, activeDate, isEditing]);
 
-  const recalculateAbsence = async () => {
-    try {
-      await calculateAbsenceUseCase.execute(groupId);
-    } catch (error) {
-      console.error('Error recalculating absence:', error);
-    }
-  };
-
   const handleConfirmDate = async (date: string) => {
     try {
       const existingRecords = await db
@@ -135,8 +123,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       setIsEditing(false);
       setActiveDate(date);
       setActiveDateId(currentId);
-
-      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ذخیره تاریخ رخ داد.');
     }
@@ -178,7 +164,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
             groupId,
             name: trimmedName,
             isActive: true,
-            inBananaChallenge: false,
+            inBananaChallenge: true, // هنگام اضافه شدن از تایم لاگ پیش فرض فعاله
             activeStreak: 0,
             highestActiveStreak: 0,
             absenceDays: 0,
@@ -225,8 +211,10 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         createdAt: new Date()
       });
 
+      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر
+      await calculateSingleMemberStats(groupId, finalMemberId);
+
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ثبت زمان به وجود آمد.');
     } finally {
@@ -342,7 +330,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         groupId,
         name: record.name.trim(),
         isActive: true,
-        inBananaChallenge: false,
+        inBananaChallenge: true, // هنگام اضافه شدن از تایم لاگ پیش فرض فعاله
         activeStreak: 0,
         highestActiveStreak: 0,
         absenceDays: 0,
@@ -370,6 +358,9 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         studyMinutes: record.minutes,
         createdAt: new Date()
       });
+
+      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر
+      await calculateSingleMemberStats(groupId, targetMemberId);
     }
   };
 
@@ -395,7 +386,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         );
       }
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence();
     } catch (error: any) {
       if (error.message === 'DUPLICATE_LOG') {
         Alert.alert('تداخل نام', 'کاربر قبلاً در لیست نهایی ثبت شده است.');
@@ -437,7 +427,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       }
 
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ثبت گروهی پیش آمد.');
     }
@@ -492,9 +481,21 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
 
   const handleDeleteFinalLog = async (logId: string) => {
     try {
+      // پیدا کردن عضو صاحب لاگ قبل از حذف تا بتوانیم دیتای او را بازسازی کنیم
+      const logRecord = await db
+        .select()
+        .from(studyLogs)
+        .where(eq(studyLogs.id, logId))
+        .limit(1);
+
       await db.delete(studyLogs).where(eq(studyLogs.id, logId));
+
+      if (logRecord.length > 0) {
+        // 🔥 اجرای هوک افزایشی فقط برای همین کاربر پس از حذف لاگ
+        await calculateSingleMemberStats(groupId, logRecord[0].memberId);
+      }
+
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در حذف لاگ پیش آمد.');
     }
@@ -533,8 +534,10 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         .set({ name: trimmedName })
         .where(eq(members.id, memberId));
 
+      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر
+      await calculateSingleMemberStats(groupId, memberId);
+
       setRefreshKey((prev) => prev + 1);
-      await recalculateAbsence();
     } catch (error) {
       Alert.alert('خطا', 'مشکلی در ویرایش اطلاعات پیش آمد.');
     }

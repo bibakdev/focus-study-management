@@ -10,6 +10,7 @@ import {
   MemberTarget,
   MemberWithTarget
 } from '../../../domain/entities/member';
+import { calculateSingleMemberStats } from '../../../domain/use-cases/calculate-single-member-stats';
 import {
   TimeInput,
   UserFormData,
@@ -135,7 +136,10 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
     }
 
     try {
+      let activeMemberId = '';
+
       if (editingUser) {
+        activeMemberId = editingUser.member.id;
         await db
           .update(members)
           .set({
@@ -145,7 +149,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
             activeStreak: data.activeStreak,
             absenceDays: data.absenceDays
           })
-          .where(eq(members.id, editingUser.member.id));
+          .where(eq(members.id, activeMemberId));
 
         await db
           .update(memberTargets)
@@ -160,12 +164,12 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
             thursdayMinutes: timeToMins(data.weekly.thursday),
             fridayMinutes: timeToMins(data.weekly.friday)
           })
-          .where(eq(memberTargets.memberId, editingUser.member.id));
+          .where(eq(memberTargets.memberId, activeMemberId));
       } else {
-        const newMemberId = generateUUID();
+        activeMemberId = generateUUID();
 
         await db.insert(members).values({
-          id: newMemberId,
+          id: activeMemberId,
           groupId,
           name: trimmedName,
           isActive: data.isActive,
@@ -183,7 +187,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
 
         await db.insert(memberTargets).values({
           id: generateUUID(),
-          memberId: newMemberId,
+          memberId: activeMemberId,
           groupId,
           targetType: data.targetType,
           defaultMinutes: timeToMins(data.defaultTime),
@@ -196,6 +200,9 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
           fridayMinutes: timeToMins(data.weekly.friday)
         });
       }
+
+      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر برای آپدیت اعداد در دیتابیس
+      await calculateSingleMemberStats(groupId, activeMemberId);
 
       handleCloseModal();
       setSearchQuery('');
