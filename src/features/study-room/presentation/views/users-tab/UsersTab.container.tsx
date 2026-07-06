@@ -1,5 +1,5 @@
 import { db } from '@/core/database/db';
-import { members, memberTargets } from '@/core/database/schema';
+import { groups, members, memberTargets } from '@/core/database/schema';
 import { generateUUID } from '@/core/utils/uuid';
 import { desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
@@ -28,6 +28,15 @@ const timeToMins = (time: TimeInput): number => {
   return h * 60 + m;
 };
 
+// تابع کمکی برای تبدیل دقیقه به متن خوانا (مثلا 2 ساعت و 30 دقیقه)
+const formatMinToFa = (mins: number) => {
+  const h = Math.floor(mins / 60);
+  const m = mins % 60;
+  if (h > 0 && m > 0) return `${h} ساعت و ${m} دقیقه`;
+  if (h > 0) return `${h} ساعت`;
+  return `${m} دقیقه`;
+};
+
 const MAX_TARGET_MINUTES = 18 * 60;
 
 const DAY_NAMES: Record<keyof UserFormData['weekly'], string> = {
@@ -48,6 +57,13 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
     member: Member;
     target: MemberTarget;
   } | null>(null);
+
+  // دریافت تنظیمات گروه برای ولیدیشن چالش موز
+  const { data: groupData } = useLiveQuery(
+    db.select().from(groups).where(eq(groups.id, groupId))
+  );
+  const currentGroup = groupData?.[0];
+  const bananaThreshold = currentGroup?.bananaThreshold || 120;
 
   const { data: rawUsers } = useLiveQuery(
     db
@@ -115,17 +131,40 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
       return;
     }
 
+    const thresholdStr = formatMinToFa(bananaThreshold);
+
+    // 🔴 ولیدیشن تارگت‌ها (حداکثر زمان و حداقل زمان چالش موز)
     if (data.targetType === 'FIXED') {
-      if (timeToMins(data.defaultTime) > MAX_TARGET_MINUTES) {
+      const mins = timeToMins(data.defaultTime);
+
+      // اگر تایم ۰ باشد یعنی روز استراحت است، اما اگر بزرگتر از ۰ باشد نباید از تارگت موز کمتر باشد
+      if (mins > 0 && mins < bananaThreshold) {
+        Alert.alert(
+          'خطای تارگت',
+          `تارگت مطالعه نمی‌تواند از حداقل زمان تنظیم شده برای دریافت موز (${thresholdStr}) کمتر باشد.`
+        );
+        return;
+      }
+
+      if (mins > MAX_TARGET_MINUTES) {
         Alert.alert('خطا', 'تارگت مطالعه نمی‌تواند بیشتر از ۱۸ ساعت باشد.');
         return;
       }
     } else {
       for (const [dayKey, dayName] of Object.entries(DAY_NAMES)) {
-        if (
-          timeToMins(data.weekly[dayKey as keyof UserFormData['weekly']]) >
-          MAX_TARGET_MINUTES
-        ) {
+        const mins = timeToMins(
+          data.weekly[dayKey as keyof UserFormData['weekly']]
+        );
+
+        if (mins > 0 && mins < bananaThreshold) {
+          Alert.alert(
+            'خطای تارگت',
+            `تارگت روز ${dayName} نمی‌تواند از حداقل زمان دریافت موز (${thresholdStr}) کمتر باشد.`
+          );
+          return;
+        }
+
+        if (mins > MAX_TARGET_MINUTES) {
           Alert.alert(
             'خطا',
             `تارگت مطالعه در روز ${dayName} نمی‌تواند بیشتر از ۱۸ ساعت باشد.`
@@ -201,7 +240,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
         });
       }
 
-      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر برای آپدیت اعداد در دیتابیس
+      // اجرای هوک افزایشی فقط برای همین کاربر برای آپدیت اعداد در دیتابیس
       await calculateSingleMemberStats(groupId, activeMemberId);
 
       handleCloseModal();

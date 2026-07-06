@@ -41,7 +41,6 @@ export function useBananaDeltaCalculator(
   const [bananaResults, setBananaResults] = useState<RankingItem[]>([]);
   const [streakResults, setStreakResults] = useState<RankingItem[]>([]);
 
-  // دریافت لایو اطلاعات از دیتابیس
   const { data: allMembers } = useLiveQuery(
     db.select().from(members).where(eq(members.groupId, groupId))
   );
@@ -57,11 +56,12 @@ export function useBananaDeltaCalculator(
   );
   const { data: allHistoricalLogs } = useLiveQuery(db.select().from(studyLogs));
 
-  // رفرنس‌ها برای تشخیص تغییرات (Delta Detection)
   const prevLogsRef = useRef<any[]>([]);
   const prevMembersRef = useRef<any[]>([]);
   const lastDateIdRef = useRef<string | null>(null);
   const lastGroupIdRef = useRef<string | null>(null);
+  const lastBananaThresholdRef = useRef<number | null>(null);
+  const lastMaxEggplantsRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (
@@ -80,14 +80,9 @@ export function useBananaDeltaCalculator(
       targetDateIndex >= 0 ? allDates.slice(0, targetDateIndex + 1) : [];
     const weekdayStr = getPersianWeekday(activeDate);
 
-    // ۱. منطق پردازش یک کاربر خاص (Single-Member Calculation)
     const calculateSingleMember = (
       m: Member
     ): { bItem: RankingItem | null; sItem: RankingItem | null } => {
-      const isChallenging =
-        m.inBananaChallenge === true || m.inBananaChallenge === 1;
-      if (!isChallenging) return { bItem: null, sItem: null };
-
       const memberJoinPersian = getPersianDateStr(new Date(m.joinedAt));
       const targetData = allTargets.find((t) => t.memberId === m.id);
 
@@ -175,34 +170,51 @@ export function useBananaDeltaCalculator(
           }
         }
 
-        if (dTarget > 0) {
-          if (mins >= dTarget) currentStreak++;
-          else currentStreak = 0;
+        if (dTarget === 0) {
+          currentStreak = 0;
+          continue;
+        }
+
+        if (mins >= dTarget) {
+          currentStreak++;
+          consecutiveEggplants = 0;
+        } else {
+          currentStreak = 0;
+          if (mins >= currentGroup.bananaThreshold) {
+            consecutiveEggplants = 0;
+          } else {
+            consecutiveEggplants++;
+          }
         }
 
         if (d.persianDate < activeDate) {
           maxHistoricalStreak = Math.max(maxHistoricalStreak, currentStreak);
         }
 
-        if (mins < currentGroup.bananaThreshold) {
-          consecutiveEggplants++;
-        } else {
-          consecutiveEggplants = 0;
-        }
-
-        if (
-          consecutiveEggplants >= currentGroup.maxEggplantsAllowed &&
-          eliminatedDateId === null
-        ) {
-          eliminatedDateId = d.id;
+        if (consecutiveEggplants >= currentGroup.maxEggplantsAllowed) {
+          if (m.inBananaChallenge) {
+            // اگر ادمین دکمه را روشن کرده باشد (بخشودگی)
+            if (d.id === activeDateId) {
+              eliminatedDateId = d.id;
+            } else {
+              consecutiveEggplants = 0;
+            }
+          } else {
+            if (eliminatedDateId === null) eliminatedDateId = d.id;
+          }
         }
       }
 
       const wasEliminatedBefore =
         eliminatedDateId !== null && eliminatedDateId !== activeDateId;
       const getsEliminatedToday = eliminatedDateId === activeDateId;
+      const manuallyOptedOut =
+        !m.inBananaChallenge && eliminatedDateId === null;
 
-      if (wasEliminatedBefore) return { bItem: null, sItem: null };
+      // اگر کاربر کلا در چالش نیست یا قبلاً حذف شده نمایش داده نشود
+      if (wasEliminatedBefore || manuallyOptedOut) {
+        return { bItem: null, sItem: null };
+      }
 
       const todayLog = allHistoricalLogs.find(
         (l) => l.memberId === m.id && l.groupDateId === activeDateId
@@ -251,16 +263,18 @@ export function useBananaDeltaCalculator(
       return { bItem, sItem };
     };
 
-    // --- ۲. استراتژی تزریق و مرتب‌سازی ---
     const isDateChanged = lastDateIdRef.current !== activeDateId;
     const isGroupChanged = lastGroupIdRef.current !== groupId;
+    const isSettingsChanged =
+      lastBananaThresholdRef.current !== currentGroup.bananaThreshold ||
+      lastMaxEggplantsRef.current !== currentGroup.maxEggplantsAllowed;
 
     if (
       isDateChanged ||
       isGroupChanged ||
+      isSettingsChanged ||
       prevMembersRef.current.length === 0
     ) {
-      // اجرای کامل (Full Recalculation) - فقط در زمان تغییر تاریخ یا گروه
       const newB: RankingItem[] = [];
       const newS: RankingItem[] = [];
 
@@ -280,7 +294,6 @@ export function useBananaDeltaCalculator(
       setBananaResults(newB);
       setStreakResults(newS);
     } else {
-      // به‌روزرسانی افزایشی (Delta Update) - وقتی کاربر یا لاگ جدیدی اضافه شد
       const changedMemberIds = new Set<string>();
 
       allHistoricalLogs.forEach((newLog) => {
@@ -308,7 +321,6 @@ export function useBananaDeltaCalculator(
               if (bItem) updated.push(bItem);
             }
           });
-          // ۳. مرتب‌سازی مجدد در حافظه (Local Re-sorting)
           updated.sort((a, b) => {
             if (b.sortScore !== a.sortScore)
               return (b.sortScore || 0) - (a.sortScore || 0);
@@ -335,6 +347,8 @@ export function useBananaDeltaCalculator(
 
     lastDateIdRef.current = activeDateId;
     lastGroupIdRef.current = groupId;
+    lastBananaThresholdRef.current = currentGroup.bananaThreshold;
+    lastMaxEggplantsRef.current = currentGroup.maxEggplantsAllowed;
     prevLogsRef.current = allHistoricalLogs;
     prevMembersRef.current = allMembers;
   }, [

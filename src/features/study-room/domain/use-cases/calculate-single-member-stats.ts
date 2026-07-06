@@ -28,15 +28,10 @@ const getPersianDateStr = (date: Date) => {
   }
 };
 
-/**
- * به‌روزرسانی نقطه‌ای (Targeted Update)
- * این تابع فقط لاگ‌ها و وضعیت یک کاربر خاص را محاسبه و در دیتابیس آپدیت می‌کند.
- */
 export async function calculateSingleMemberStats(
   groupId: string,
   memberId: string
 ) {
-  // ۱. دریافت اطلاعات پایه (گروه، کاربر و تارگت)
   const groupArr = await db
     .select()
     .from(groups)
@@ -60,7 +55,6 @@ export async function calculateSingleMemberStats(
     .limit(1);
   const targetData = targetArr.length > 0 ? targetArr[0] : null;
 
-  // ۲. دریافت تاریخ‌ها و لاگ‌های منحصراً متعلق به همین کاربر
   const dates = await db
     .select()
     .from(groupDates)
@@ -71,7 +65,6 @@ export async function calculateSingleMemberStats(
     .from(studyLogs)
     .where(eq(studyLogs.memberId, memberId));
 
-  // ۳. متغیرهای انباشتی (Accumulators)
   let absenceDays = 0;
   let activeStreak = 0;
   let highestActiveStreak = 0;
@@ -82,11 +75,11 @@ export async function calculateSingleMemberStats(
   let consecutiveEggplants = 0;
   let isActive = true;
 
-  const isChallenging =
+  // وضعیت اولیه شرکت در چالش
+  let inBananaChallenge =
     member.inBananaChallenge === true || member.inBananaChallenge === 1;
   const memberJoinPersian = getPersianDateStr(new Date(member.joinedAt));
 
-  // ۴. فیلتر کردن تاریخ‌های مجاز (از روز عضویت به بعد یا روزهایی که لاگ دارند)
   const validDates = dates.filter((d) => {
     return (
       d.persianDate >= memberJoinPersian ||
@@ -94,8 +87,10 @@ export async function calculateSingleMemberStats(
     );
   });
 
-  // ۵. پردازش روز به روز برای محاسبه استمرار و امتیازات
-  for (const date of validDates) {
+  for (let i = 0; i < validDates.length; i++) {
+    const date = validDates[i];
+    const isLastDate = i === validDates.length - 1;
+
     const hasLog = logs.find((l) => l.groupDateId === date.id);
     const mins = hasLog ? hasLog.studyMinutes : 0;
 
@@ -133,11 +128,9 @@ export async function calculateSingleMemberStats(
       }
     }
 
-    // اگر کاربر در چالش نیست یا تارگتش صفر است، جریمه و پاداشی محاسبه نمی‌شود
-    if (!isChallenging || dailyTarget === 0) {
+    if (dailyTarget === 0) {
       activeStreak = 0;
       absenceDays = 0;
-      consecutiveEggplants = 0;
       isActive = true;
       continue;
     }
@@ -168,9 +161,19 @@ export async function calculateSingleMemberStats(
       totalEggplants += 1;
       consecutiveEggplants += 1;
     }
+
+    if (consecutiveEggplants >= group.maxEggplantsAllowed) {
+      if (member.inBananaChallenge) {
+        // اگر ادمین دستی روشن کرده باشد
+        if (isLastDate) {
+          inBananaChallenge = false; // امروز حذف شد
+        } else {
+          consecutiveEggplants = 0; // در گذشته حذف شده بوده اما ادمین بخشیده
+        }
+      }
+    }
   }
 
-  // ۶. ذخیره نتایج نهایی منحصراً برای همین کاربر در دیتابیس
   await db
     .update(members)
     .set({
@@ -182,7 +185,8 @@ export async function calculateSingleMemberStats(
       totalCheckmarks,
       totalBananas,
       totalEggplants,
-      consecutiveEggplants
+      consecutiveEggplants,
+      inBananaChallenge
     })
     .where(eq(members.id, memberId));
 }
