@@ -5,6 +5,7 @@ export interface Member {
   name: string;
   isActive: boolean;
   inBananaChallenge: boolean;
+  inGroupChallenge: boolean;
   isManualOptOut?: boolean;
   lastForgivenDate?: string | null;
   activeStreak: number;
@@ -15,6 +16,10 @@ export interface Member {
   totalCheckmarks: number;
   totalBananas: number;
   totalEggplants: number;
+  teamFirstPlaces: number;
+  teamSecondPlaces: number;
+  teamThirdPlaces: number;
+  teamChampionships: number;
   joinedAt: Date;
 }
 

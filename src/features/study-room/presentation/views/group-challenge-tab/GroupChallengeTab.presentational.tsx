@@ -1,5 +1,9 @@
+// src/features/study-room/presentation/views/group-challenge-tab/GroupChallengeTab.presentational.tsx
 import { ScrollView, Text, View } from 'react-native';
-import { ActiveChallengeBoard } from '../../components/ActiveChallengeBoard';
+import {
+  ActiveChallengeBoard,
+  CalculatedTeam
+} from '../../components/ActiveChallengeBoard';
 import {
   ChallengeResultsBoard,
   TopMember
@@ -16,13 +20,17 @@ interface GroupChallengeTabPresentationalProps {
   hasStartedChallenge: boolean;
   isChallengeActive: boolean;
   isChallengeFinished: boolean;
-  onStartFinalChallenge: () => void;
+  onStartFinalChallenge: (finalMembers: any[]) => void;
   onEndChallenge: () => void;
   onResetChallenge: () => void;
   challengeSettings: any;
   dummyWinnerData: { teamName: string; topMembers: TopMember[] } | null;
   topicLink?: string;
   onTopicLinkSave: (link: string) => void;
+
+  teamsData: CalculatedTeam[];
+  currentDay: number;
+  duration: number;
 }
 
 export function GroupChallengeTabPresentational({
@@ -39,7 +47,10 @@ export function GroupChallengeTabPresentational({
   challengeSettings,
   dummyWinnerData,
   topicLink,
-  onTopicLinkSave
+  onTopicLinkSave,
+  teamsData,
+  currentDay,
+  duration
 }: GroupChallengeTabPresentationalProps) {
   return (
     <View className="flex-1 w-full pt-6">
@@ -65,7 +76,6 @@ export function GroupChallengeTabPresentational({
             )}
 
             {isChallengeFinished && dummyWinnerData ? (
-              // 🔴 ارسال پراپ‌های تلگرام به بورد نتایج نهایی
               <ChallengeResultsBoard
                 winningTeamName={dummyWinnerData.teamName}
                 topMembers={dummyWinnerData.topMembers}
@@ -75,10 +85,9 @@ export function GroupChallengeTabPresentational({
               />
             ) : isChallengeActive ? (
               <ActiveChallengeBoard
-                initialTeamNames={
-                  challengeSettings?.teams || ['عقاب‌ها', 'شیرها']
-                }
-                duration={challengeSettings?.duration || 5}
+                teamsData={teamsData}
+                currentDay={currentDay}
+                duration={duration}
                 onEndChallenge={onEndChallenge}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
@@ -86,6 +95,7 @@ export function GroupChallengeTabPresentational({
             ) : hasStartedChallenge && challengeSettings ? (
               <TeamAllocationBoard
                 teamNames={challengeSettings.teams}
+                initialMembers={challengeSettings.allocatedMembers}
                 onFinalStart={onStartFinalChallenge}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}

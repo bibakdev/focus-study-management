@@ -1,3 +1,4 @@
+// src/features/study-room/presentation/components/UserCard.tsx
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
@@ -55,7 +56,7 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
       layout={Layout.springify().damping(20).stiffness(90)}
       className="bg-surface-card rounded-2xl p-4 mb-4 shadow-sm border border-surface-muted overflow-hidden"
     >
-      {/* 🔴 هدر اصلی (همیشه قابل مشاهده) */}
+      {/* هدر اصلی (همیشه قابل مشاهده) */}
       <Pressable
         onPress={() => setIsExpanded(!isExpanded)}
         className="active:opacity-70"
@@ -82,6 +83,7 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
           </View>
 
           <View className="flex-row items-center gap-2">
+            {user.inGroupChallenge && <Text className="text-lg">⚔️</Text>}
             {user.inBananaChallenge && <Text className="text-lg">🍌</Text>}
             <Text className="text-text-primary font-bold text-lg font-main">
               {user.name}
@@ -95,67 +97,99 @@ export function UserCard({ user, onEdit, onDelete }: UserCardProps) {
         </View>
       </Pressable>
 
-      {/* 🔴 بخش باز شونده (آمار و ارقام) */}
+      {/* بخش باز شونده (آمار و ارقام - در سه ردیف مجزا) */}
       {isExpanded && (
         <Animated.View
           entering={FadeIn.duration(200)}
           exiting={FadeOut.duration(200)}
         >
-          <View className="flex-row flex-wrap justify-end gap-2 mt-4 mb-2">
-            {/* لیبل‌های آماری جدید */}
-            <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
-              <Text className="text-xs font-bold font-main text-slate-700">
-                {user.totalEggplants || 0}
-              </Text>
-              <Text className="text-xs">🍆</Text>
-            </View>
-            <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
-              <Text className="text-xs font-bold font-main text-slate-700">
-                {user.totalBananas || 0}
-              </Text>
-              <Text className="text-xs">🍌</Text>
-            </View>
-            <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
-              <Text className="text-xs font-bold font-main text-slate-700">
-                {user.totalCheckmarks || 0}
-              </Text>
-              <Text className="text-xs">✅</Text>
-            </View>
-
-            {/* لیبل‌های وضعیت */}
-            <View className="flex-row items-center bg-surface-muted px-2.5 py-1.5 rounded-lg gap-1.5">
-              <Text className="text-xs font-main text-text-secondary">
-                {joinDate}
-              </Text>
-              <Ionicons name="calendar-outline" size={14} color="#64748b" />
+          <View className="mt-4 mb-2 gap-3">
+            {/* ردیف اول: آمار چالش موزی (موز، بادمجان، تیک) */}
+            <View className="flex-row justify-end gap-2 w-full">
+              <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-slate-700">
+                  {user.totalEggplants || 0}
+                </Text>
+                <Text className="text-xs">🍆</Text>
+              </View>
+              <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-slate-700">
+                  {user.totalBananas || 0}
+                </Text>
+                <Text className="text-xs">🍌</Text>
+              </View>
+              <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-slate-700">
+                  {user.totalCheckmarks || 0}
+                </Text>
+                <Text className="text-xs">✅</Text>
+              </View>
             </View>
 
-            <View className="flex-row items-center bg-primary-light/30 px-2.5 py-1.5 rounded-lg gap-1.5">
-              <Text className="text-xs font-bold font-main text-primary-main">
-                تارگت امروز: {targetDisplay}
-              </Text>
-              <Ionicons name="time-outline" size={14} color="#4f46e5" />
+            {/* ردیف دوم: افتخارات تیمی */}
+            <View className="flex-row justify-end gap-2 w-full">
+              <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-slate-700">
+                  {user.teamChampionships || 0}
+                </Text>
+                <Text className="text-xs">🎖</Text>
+              </View>
+              <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-slate-700">
+                  {user.teamThirdPlaces || 0}
+                </Text>
+                <Text className="text-xs">🥉</Text>
+              </View>
+              <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-slate-700">
+                  {user.teamSecondPlaces || 0}
+                </Text>
+                <Text className="text-xs">🥈</Text>
+              </View>
+              <View className="flex-row items-center bg-slate-50 border border-slate-100 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-slate-700">
+                  {user.teamFirstPlaces || 0}
+                </Text>
+                <Text className="text-xs">🥇</Text>
+              </View>
             </View>
 
-            <View className="flex-row items-center bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg gap-1.5">
-              <Text className="text-xs font-bold font-main text-amber-600">
-                بیشترین رکورد: {formatTime(user.personalRecordMinutes || 0)}
-              </Text>
-              <Text className="text-xs">🏆</Text>
-            </View>
+            {/* ردیف سوم: سایر وضعیت‌ها و اطلاعات */}
+            <View className="flex-row flex-wrap justify-end gap-2 w-full">
+              <View className="flex-row items-center bg-surface-muted px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-main text-text-secondary">
+                  {joinDate}
+                </Text>
+                <Ionicons name="calendar-outline" size={14} color="#64748b" />
+              </View>
 
-            <View className="flex-row items-center bg-badge-streak-light px-2.5 py-1.5 rounded-lg gap-1.5">
-              <Text className="text-xs font-bold font-main text-badge-streak-main">
-                بیشترین استمرار:{' '}
-                {user.highestActiveStreak || user.activeStreak || 0} روز
-              </Text>
-              <Text className="text-xs">🔥</Text>
+              <View className="flex-row items-center bg-primary-light/30 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-primary-main">
+                  تارگت امروز: {targetDisplay}
+                </Text>
+                <Ionicons name="time-outline" size={14} color="#4f46e5" />
+              </View>
+
+              <View className="flex-row items-center bg-amber-50 border border-amber-200 px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-amber-600">
+                  بیشترین رکورد: {formatTime(user.personalRecordMinutes || 0)}
+                </Text>
+                <Text className="text-xs">🏆</Text>
+              </View>
+
+              <View className="flex-row items-center bg-badge-streak-light px-2.5 py-1.5 rounded-lg gap-1.5">
+                <Text className="text-xs font-bold font-main text-badge-streak-main">
+                  بیشترین استمرار:{' '}
+                  {user.highestActiveStreak || user.activeStreak || 0} روز
+                </Text>
+                <Text className="text-xs">🔥</Text>
+              </View>
             </View>
           </View>
         </Animated.View>
       )}
 
-      {/* 🔴 اکشن‌های پایین کارت (دکمه‌های حذف، ویرایش و آیکون باز و بسته کردن - همیشه قابل مشاهده) */}
+      {/* اکشن‌های پایین کارت */}
       <View className="flex-row items-center justify-between pt-3 mt-2 border-t border-surface-muted">
         <View className="flex-row items-center gap-3">
           <Pressable

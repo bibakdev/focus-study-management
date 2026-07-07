@@ -17,6 +17,7 @@ export interface UserFormData {
   name: string;
   isActive: boolean;
   inBananaChallenge: boolean;
+  inGroupChallenge: boolean;
   activeStreak: number;
   absenceDays: number;
   targetType: 'FIXED' | 'WEEKLY';
@@ -54,6 +55,7 @@ export function UserFormModal({
     name: '',
     isActive: true,
     inBananaChallenge: true,
+    inGroupChallenge: false, // 🔴 پیش‌فرض خاموش
     activeStreak: 0,
     absenceDays: 0,
     targetType: 'FIXED',
@@ -74,11 +76,14 @@ export function UserFormModal({
       setFormData({
         name: initialData.member.name,
         isActive: !!initialData.member.isActive,
-        // اینجا با استفاده از !! مطمئن می‌شویم مقادیر 0 و 1 به true و false تبدیل می‌شوند
         inBananaChallenge:
           initialData.member.inBananaChallenge !== undefined
             ? !!initialData.member.inBananaChallenge
             : true,
+        inGroupChallenge:
+          initialData.member.inGroupChallenge !== undefined
+            ? !!initialData.member.inGroupChallenge
+            : false, // 🔴 پیش‌فرض خاموش
         activeStreak: initialData.member.activeStreak,
         absenceDays: initialData.member.absenceDays || 0,
         targetType: initialData.target?.targetType || 'FIXED',
@@ -98,6 +103,7 @@ export function UserFormModal({
         name: '',
         isActive: true,
         inBananaChallenge: true,
+        inGroupChallenge: false, // 🔴 ریست شدن روی خاموش
         activeStreak: 0,
         absenceDays: 0,
         targetType: 'FIXED',
@@ -187,6 +193,23 @@ export function UserFormModal({
               شرکت در چالش موزی
             </Text>
             <Text className="text-lg">🍌</Text>
+          </View>
+        </View>
+
+        <View className="flex-row items-center justify-between bg-surface-muted p-3 rounded-2xl">
+          <Switch
+            value={formData.inGroupChallenge}
+            onValueChange={(val) =>
+              setFormData({ ...formData, inGroupChallenge: val })
+            }
+            trackColor={{ false: '#cbd5e1', true: '#4f46e5' }}
+            thumbColor="#ffffff"
+          />
+          <View className="flex-row items-center gap-2">
+            <Text className="font-main text-text-primary font-bold">
+              شرکت در رقابت تیمی
+            </Text>
+            <Text className="text-lg">⚔️</Text>
           </View>
         </View>
 

@@ -1,3 +1,4 @@
+// src/features/study-room/presentation/views/time-tab/TimeTab.container.tsx
 import { db } from '@/core/database/db';
 import {
   groupDates,
@@ -164,7 +165,8 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
             groupId,
             name: trimmedName,
             isActive: true,
-            inBananaChallenge: true, // هنگام اضافه شدن از تایم لاگ پیش فرض فعاله
+            inBananaChallenge: true,
+            inGroupChallenge: false, // 🔴 چالش گروهی پیش‌فرض خاموش
             activeStreak: 0,
             highestActiveStreak: 0,
             absenceDays: 0,
@@ -173,6 +175,10 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
             totalCheckmarks: 0,
             totalBananas: 0,
             totalEggplants: 0,
+            teamFirstPlaces: 0,
+            teamSecondPlaces: 0,
+            teamThirdPlaces: 0,
+            teamChampionships: 0,
             joinedAt: new Date()
           });
           await db.insert(memberTargets).values({
@@ -211,7 +217,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         createdAt: new Date()
       });
 
-      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر
       await calculateSingleMemberStats(groupId, finalMemberId);
 
       setRefreshKey((prev) => prev + 1);
@@ -330,7 +335,8 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         groupId,
         name: record.name.trim(),
         isActive: true,
-        inBananaChallenge: true, // هنگام اضافه شدن از تایم لاگ پیش فرض فعاله
+        inBananaChallenge: true,
+        inGroupChallenge: false, // 🔴 پیش‌فرض خاموش برای کاربران مستخرج از JSON
         activeStreak: 0,
         highestActiveStreak: 0,
         absenceDays: 0,
@@ -339,6 +345,10 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         totalCheckmarks: 0,
         totalBananas: 0,
         totalEggplants: 0,
+        teamFirstPlaces: 0,
+        teamSecondPlaces: 0,
+        teamThirdPlaces: 0,
+        teamChampionships: 0,
         joinedAt: new Date()
       });
       await db.insert(memberTargets).values({
@@ -359,7 +369,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         createdAt: new Date()
       });
 
-      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر
       await calculateSingleMemberStats(groupId, targetMemberId);
     }
   };
@@ -481,7 +490,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
 
   const handleDeleteFinalLog = async (logId: string) => {
     try {
-      // پیدا کردن عضو صاحب لاگ قبل از حذف تا بتوانیم دیتای او را بازسازی کنیم
       const logRecord = await db
         .select()
         .from(studyLogs)
@@ -491,7 +499,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       await db.delete(studyLogs).where(eq(studyLogs.id, logId));
 
       if (logRecord.length > 0) {
-        // 🔥 اجرای هوک افزایشی فقط برای همین کاربر پس از حذف لاگ
         await calculateSingleMemberStats(groupId, logRecord[0].memberId);
       }
 
@@ -534,7 +541,6 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         .set({ name: trimmedName })
         .where(eq(members.id, memberId));
 
-      // 🔥 اجرای هوک افزایشی فقط برای همین کاربر
       await calculateSingleMemberStats(groupId, memberId);
 
       setRefreshKey((prev) => prev + 1);

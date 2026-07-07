@@ -18,6 +18,8 @@ expoDb.execSync(`
     eggplant_threshold INTEGER NOT NULL DEFAULT 30,
     max_eggplants_allowed INTEGER NOT NULL DEFAULT 3,
     telegram_topic_link TEXT,
+    active_challenge_data TEXT,
+    last_challenge_result_data TEXT,
     created_at INTEGER NOT NULL
   );
 
@@ -35,6 +37,7 @@ expoDb.execSync(`
     name TEXT NOT NULL,
     is_active INTEGER NOT NULL DEFAULT 1,
     in_banana_challenge INTEGER NOT NULL DEFAULT 1,
+    in_group_challenge INTEGER NOT NULL DEFAULT 0,
     is_manual_opt_out INTEGER NOT NULL DEFAULT 0,
     last_forgiven_date TEXT,
     active_streak INTEGER NOT NULL DEFAULT 0,
@@ -45,6 +48,10 @@ expoDb.execSync(`
     total_checkmarks INTEGER NOT NULL DEFAULT 0,
     total_bananas INTEGER NOT NULL DEFAULT 0,
     total_eggplants INTEGER NOT NULL DEFAULT 0,
+    team_first_places INTEGER NOT NULL DEFAULT 0,
+    team_second_places INTEGER NOT NULL DEFAULT 0,
+    team_third_places INTEGER NOT NULL DEFAULT 0,
+    team_championships INTEGER NOT NULL DEFAULT 0,
     joined_at INTEGER NOT NULL
   );
 
@@ -88,7 +95,14 @@ const migrations = [
   'ALTER TABLE members ADD COLUMN total_bananas INTEGER NOT NULL DEFAULT 0;',
   'ALTER TABLE members ADD COLUMN total_eggplants INTEGER NOT NULL DEFAULT 0;',
   'ALTER TABLE members ADD COLUMN is_manual_opt_out INTEGER NOT NULL DEFAULT 0;',
-  'ALTER TABLE members ADD COLUMN last_forgiven_date TEXT;'
+  'ALTER TABLE members ADD COLUMN last_forgiven_date TEXT;',
+  'ALTER TABLE members ADD COLUMN in_group_challenge INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN team_first_places INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN team_second_places INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN team_third_places INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE members ADD COLUMN team_championships INTEGER NOT NULL DEFAULT 0;',
+  'ALTER TABLE groups ADD COLUMN active_challenge_data TEXT;',
+  'ALTER TABLE groups ADD COLUMN last_challenge_result_data TEXT;'
 ];
 
 for (const query of migrations) {

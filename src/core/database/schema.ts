@@ -9,6 +9,10 @@ export const groups = sqliteTable('groups', {
   eggplantThreshold: integer('eggplant_threshold').notNull().default(30),
   maxEggplantsAllowed: integer('max_eggplants_allowed').notNull().default(3),
   telegramTopicLink: text('telegram_topic_link'),
+  // 🔴 ذخیره چالش در حال اجرا
+  activeChallengeData: text('active_challenge_data'),
+  // 🔴 ذخیره نتایج آخرین چالش تمام شده
+  lastChallengeResultData: text('last_challenge_result_data'),
   createdAt: integer('created_at', { mode: 'timestamp' }).notNull()
 });
 
@@ -39,6 +43,9 @@ export const members = sqliteTable(
     inBananaChallenge: integer('in_banana_challenge', { mode: 'boolean' })
       .notNull()
       .default(true),
+    inGroupChallenge: integer('in_group_challenge', { mode: 'boolean' })
+      .notNull()
+      .default(false),
     isManualOptOut: integer('is_manual_opt_out', { mode: 'boolean' })
       .notNull()
       .default(false),
@@ -53,6 +60,10 @@ export const members = sqliteTable(
     totalCheckmarks: integer('total_checkmarks').notNull().default(0),
     totalBananas: integer('total_bananas').notNull().default(0),
     totalEggplants: integer('total_eggplants').notNull().default(0),
+    teamFirstPlaces: integer('team_first_places').notNull().default(0),
+    teamSecondPlaces: integer('team_second_places').notNull().default(0),
+    teamThirdPlaces: integer('team_third_places').notNull().default(0),
+    teamChampionships: integer('team_championships').notNull().default(0),
     joinedAt: integer('joined_at', { mode: 'timestamp' }).notNull()
   },
   (table) => ({

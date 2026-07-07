@@ -170,12 +170,10 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
 
     try {
       let activeMemberId = '';
-
       let isManualOptOut = false;
       let lastForgivenDate: string | null = null;
 
       if (editingUser) {
-        // اجبار استفاده از Boolean برای جلوگیری از خطای تبدیل 0 و 1 دیتابیس
         const oldStatus = !!editingUser.member.inBananaChallenge;
         const newStatus = !!data.inBananaChallenge;
 
@@ -202,6 +200,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
             name: trimmedName,
             isActive: data.isActive,
             inBananaChallenge: data.inBananaChallenge,
+            inGroupChallenge: data.inGroupChallenge, // 🔴 مقدار فرم اعمال می‌شود
             isManualOptOut: isManualOptOut,
             lastForgivenDate: lastForgivenDate,
             activeStreak: data.activeStreak,
@@ -232,6 +231,7 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
           name: trimmedName,
           isActive: data.isActive,
           inBananaChallenge: data.inBananaChallenge,
+          inGroupChallenge: data.inGroupChallenge, // 🔴 مقدار فرم اعمال می‌شود
           isManualOptOut: isManualOptOut,
           lastForgivenDate: lastForgivenDate,
           activeStreak: data.activeStreak,
@@ -242,6 +242,10 @@ export function UsersTabContainer({ groupId }: UsersTabContainerProps) {
           totalCheckmarks: 0,
           totalBananas: 0,
           totalEggplants: 0,
+          teamFirstPlaces: 0,
+          teamSecondPlaces: 0,
+          teamThirdPlaces: 0,
+          teamChampionships: 0,
           joinedAt: new Date()
         });
 

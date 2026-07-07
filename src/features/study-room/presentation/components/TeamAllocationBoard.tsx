@@ -1,7 +1,8 @@
+// src/features/study-room/presentation/components/TeamAllocationBoard.tsx
 import { BottomSheetModal } from '@/shared/components/modals/BottomSheetModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -15,7 +16,6 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 
-// 🔴 اطلاعات اختصاصی ربات و چت‌ آیدی
 const TELEGRAM_BOT_TOKEN = '7770369278:AAFscQ98y0cd6NEepyfrKzQOIC7jya5POC0';
 const TELEGRAM_CHAT_ID = '8586178318';
 
@@ -44,7 +44,7 @@ function parseTelegramLink(
   return null;
 }
 
-interface TeamMember {
+export interface TeamMember {
   id: string;
   name: string;
   target: string;
@@ -53,7 +53,8 @@ interface TeamMember {
 
 interface TeamAllocationBoardProps {
   teamNames: string[];
-  onFinalStart: () => void;
+  initialMembers: TeamMember[]; // 🔴 پراپ جدید برای دریافت تیم‌بندی حریصانه
+  onFinalStart: (finalMembers: TeamMember[]) => void; // 🔴 ارسال لیست نهایی به بالا
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
 }
@@ -201,16 +202,18 @@ function MemberCard({ member, teamNames, teamStyle, onMove, onRemove }: any) {
 
 export function TeamAllocationBoard({
   teamNames,
+  initialMembers,
   onFinalStart,
   initialTopicLink,
   onTopicLinkSave
 }: TeamAllocationBoardProps) {
-  const [members, setMembers] = useState<TeamMember[]>([
-    { id: '1', name: 'علی', target: '5 ساعت', teamIndex: 0 },
-    { id: '2', name: 'محمد', target: '4 ساعت', teamIndex: 1 },
-    { id: '3', name: 'مریم', target: '7 ساعت', teamIndex: 1 },
-    { id: '4', name: 'سارا', target: '6 ساعت', teamIndex: 2 }
-  ]);
+  // 🔴 مقداردهی استیت با اطلاعات الگوریتم
+  const [members, setMembers] = useState<TeamMember[]>(initialMembers);
+
+  // در صورت تغییر در بالا، آپدیت شود
+  useEffect(() => {
+    setMembers(initialMembers);
+  }, [initialMembers]);
 
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -233,7 +236,6 @@ export function TeamAllocationBoard({
     setMembers((prev) => prev.filter((m) => m.id !== id));
   };
 
-  // 🔴 تابع جدید برای ایجاد بسته‌ها با شرط جداسازی تیم‌ها
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
     const mainHeader = '⚔️ تیم‌بندی چالش گروهی\n➖➖➖➖➖➖➖➖\n';
@@ -243,7 +245,6 @@ export function TeamAllocationBoard({
       const teamMembers = members.filter((m) => m.teamIndex === index);
       if (teamMembers.length === 0) return;
 
-      // اگر وارد یک تیم جدید شدیم و بسته فعلی خالی نیست (دیتا از تیم قبلی دارد)، بسته رو می‌بندیم
       if (currentChunk !== mainHeader && currentChunk.trim() !== '') {
         newChunks.push(currentChunk.trim());
         currentChunk = '';
@@ -269,7 +270,6 @@ export function TeamAllocationBoard({
           currentChunk.trim() !== ''
         ) {
           newChunks.push(currentChunk.trim());
-          // اگر اعضای تیم سرریز شد، در بسته جدید هدر تیم رو با عنوان (ادامه) می‌نویسیم
           currentChunk = `${teamIcon} ${teamName} (ادامه):\n` + line;
         } else {
           currentChunk += line;
@@ -532,7 +532,7 @@ export function TeamAllocationBoard({
       })}
 
       <Pressable
-        onPress={onFinalStart}
+        onPress={() => onFinalStart(members)} // 🔴 ارسال لیست فعلی به کانتینر
         className="w-full bg-[#10b981] py-4 rounded-2xl items-center flex-row justify-center gap-2 active:scale-95 transition-transform mt-2 mb-8 shadow-md shadow-emerald-200"
       >
         <Text className="text-white font-bold font-main text-sm">

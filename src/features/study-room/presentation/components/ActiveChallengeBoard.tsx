@@ -1,3 +1,4 @@
+// src/features/study-room/presentation/components/ActiveChallengeBoard.tsx
 import { BottomSheetModal } from '@/shared/components/modals/BottomSheetModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -13,7 +14,6 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut } from 'react-native-reanimated';
 
-// 🔴 اطلاعات اختصاصی ربات و چت‌ آیدی
 const TELEGRAM_BOT_TOKEN = '7770369278:AAFscQ98y0cd6NEepyfrKzQOIC7jya5POC0';
 const TELEGRAM_CHAT_ID = '8586178318';
 
@@ -43,16 +43,22 @@ function parseTelegramLink(
   return null;
 }
 
-interface TeamMember {
+export interface CalculatedTeamMember {
   id: string;
   name: string;
-  targetHours: number;
+  dailyTargetMinutes: number;
   currentMinutes: number;
-  teamIndex: number;
+}
+
+export interface CalculatedTeam {
+  name: string;
+  totalMinutes: number;
+  members: CalculatedTeamMember[];
 }
 
 interface ActiveChallengeBoardProps {
-  initialTeamNames: string[];
+  teamsData: CalculatedTeam[];
+  currentDay: number;
   duration: number;
   onEndChallenge: () => void;
   initialTopicLink?: string;
@@ -84,6 +90,30 @@ const getTeamStyles = (index: number) => {
       progressFill: 'bg-fuchsia-400',
       avatarBg: 'bg-fuchsia-100',
       avatarText: 'text-fuchsia-600'
+    },
+    {
+      bg: 'bg-emerald-50/40',
+      border: 'border-emerald-100',
+      text: 'text-emerald-800',
+      badgeBg: 'bg-white',
+      badgeText: 'text-emerald-600',
+      cardBorder: 'border-emerald-50',
+      progressTrack: 'bg-slate-100',
+      progressFill: 'bg-emerald-400',
+      avatarBg: 'bg-emerald-100',
+      avatarText: 'text-emerald-600'
+    },
+    {
+      bg: 'bg-rose-50/40',
+      border: 'border-rose-100',
+      text: 'text-rose-800',
+      badgeBg: 'bg-white',
+      badgeText: 'text-rose-600',
+      cardBorder: 'border-rose-50',
+      progressTrack: 'bg-slate-100',
+      progressFill: 'bg-rose-400',
+      avatarBg: 'bg-rose-100',
+      avatarText: 'text-rose-600'
     }
   ];
   return colors[index % colors.length];
@@ -99,38 +129,15 @@ const formatTimeStr = (minutes: number) => {
 };
 
 export function ActiveChallengeBoard({
-  initialTeamNames,
+  teamsData,
+  currentDay,
   duration,
   onEndChallenge,
   initialTopicLink,
   onTopicLinkSave
 }: ActiveChallengeBoardProps) {
-  const [teamNames, setTeamNames] = useState<string[]>(initialTeamNames);
-
-  // دیتای تستی (مجموع شامل تایم‌های امروز + روزهای قبل است)
-  const [members] = useState<TeamMember[]>([
-    { id: '1', name: 'علی', targetHours: 5, currentMinutes: 240, teamIndex: 0 },
-    {
-      id: '2',
-      name: 'سارا',
-      targetHours: 6,
-      currentMinutes: 300,
-      teamIndex: 0
-    },
-    {
-      id: '3',
-      name: 'محمد',
-      targetHours: 4,
-      currentMinutes: 120,
-      teamIndex: 1
-    },
-    { id: '4', name: 'مریم', targetHours: 7, currentMinutes: 360, teamIndex: 1 }
-  ]);
-
-  const currentDay = 3;
   const daysArray = Array.from({ length: duration }, (_, i) => i + 1);
 
-  // استیت‌های اشتراک‌گذاری
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [actionType, setActionType] = useState<'COPY' | 'TELEGRAM' | null>(
@@ -142,66 +149,49 @@ export function ActiveChallengeBoard({
   const [chunks, setChunks] = useState<string[]>([]);
   const [copiedChunks, setCopiedChunks] = useState<Set<number>>(new Set());
 
-  const handleTeamNameChange = (text: string, index: number) => {
-    setTeamNames((prev) => {
-      const updated = [...prev];
-      updated[index] = text;
-      return updated;
-    });
-  };
-
-  // 🔴 منطق تولید پیام خروجی با مجموع زمان تیم‌ها
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
-    const mainHeader = `⚔️ وضعیت چالش گروهی (روز ${currentDay} از ${duration})\n➖➖➖➖➖➖➖➖\n`;
-    let currentChunk = mainHeader;
 
-    teamNames.forEach((teamName, index) => {
-      const teamMembers = members.filter((m) => m.teamIndex === index);
-      if (teamMembers.length === 0) return;
+    // ۱. ساخت هدر انگلیسی و قرار دادن در پیام مجزا
+    const headerChunk = `⚔️ Group Challenge Status (Day ${currentDay} of ${duration})\n➖➖➖➖➖➖➖➖`;
+    newChunks.push(headerChunk);
 
-      // محاسبه تستی مجموع زمان تیم (مجموع امروز + یک عدد فرضی برای روزهای گذشته)
-      const teamTodayMins = teamMembers.reduce(
-        (acc, m) => acc + m.currentMinutes,
-        0
-      );
-      const teamTotalMins = teamTodayMins + (index === 0 ? 1200 : 900); // 20h or 15h fake past data
-      const teamTotalStr = formatTimeStr(teamTotalMins);
-
-      if (currentChunk !== mainHeader && currentChunk.trim() !== '') {
-        newChunks.push(currentChunk.trim());
-        currentChunk = '';
-      }
+    // ۲. پردازش هر تیم
+    teamsData.forEach((team, index) => {
+      if (team.members.length === 0) return;
 
       const teamIcon = index === 0 ? '🦅' : index === 1 ? '🐯' : '🔰';
-      const teamHeader = `${teamIcon} ${teamName} (مجموع: ${teamTotalStr}):\n`;
 
-      if (
-        (currentChunk + teamHeader).length > maxLength &&
-        currentChunk.trim() !== ''
-      ) {
-        newChunks.push(currentChunk.trim());
-        currentChunk = teamHeader;
-      } else {
-        currentChunk += teamHeader;
-      }
+      // هدر اصلی تیم همراه با مجموع تایم
+      const teamHeader = `${teamIcon} ${team.name} (${formatTimeStr(team.totalMinutes)}):\n`;
+      // هدر در صورت شکسته شدن پیام (بدون کلمه ادامه و تایم)
+      const teamHeaderContinuation = `${teamIcon} ${team.name}:\n`;
 
-      teamMembers.forEach((m, mIndex) => {
+      let currentChunk = teamHeader;
+
+      team.members.forEach((m, mIndex) => {
         const studyStr = formatTimeStr(m.currentMinutes);
-        const line = `  ${mIndex + 1}. ${m.name} - تارگت: ${m.targetHours}h | مطالعه: ${studyStr}\n`;
+        const targetStr = formatTimeStr(m.dailyTargetMinutes * currentDay);
+        // فرمت جلوی اسم اعضا طبق درخواست
+        const line = `  ${mIndex + 1}. ${m.name} - ${studyStr} (${targetStr})\n`;
+
         if (
           (currentChunk + line).length > maxLength &&
-          currentChunk.trim() !== ''
+          currentChunk !== teamHeader &&
+          currentChunk !== teamHeaderContinuation
         ) {
-          newChunks.push(currentChunk.trim());
-          currentChunk = `${teamIcon} ${teamName} (ادامه):\n` + line;
+          newChunks.push(currentChunk.trimEnd());
+          currentChunk = teamHeaderContinuation + line;
         } else {
           currentChunk += line;
         }
       });
+
+      if (currentChunk.trim() !== '') {
+        newChunks.push(currentChunk.trimEnd());
+      }
     });
 
-    if (currentChunk.trim() !== '') newChunks.push(currentChunk.trim());
     return newChunks;
   };
 
@@ -370,7 +360,7 @@ export function ActiveChallengeBoard({
           </View>
           <View className="flex-row items-center gap-2">
             <Text className="text-slate-800 font-bold text-base font-main">
-              وضعیت روزهای چالش
+              پیشرفت روزهای چالش
             </Text>
             <Ionicons
               name="checkmark-circle-outline"
@@ -388,14 +378,10 @@ export function ActiveChallengeBoard({
             <View className="w-2.5 h-2.5 rounded-full bg-slate-200" />
           </View>
           <View className="flex-row items-center gap-1.5">
-            <Text className="text-slate-600 text-[10px] font-main">امروز</Text>
-            <View className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
-          </View>
-          <View className="flex-row items-center gap-1.5">
             <Text className="text-slate-600 text-[10px] font-main">
-              سپری شده
+              تا امروز
             </Text>
-            <View className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+            <View className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
           </View>
         </View>
 
@@ -404,19 +390,7 @@ export function ActiveChallengeBoard({
           style={{ direction: 'rtl' }}
         >
           {daysArray.map((day) => {
-            if (day < currentDay) {
-              return (
-                <View
-                  key={day}
-                  className="flex-1 items-center justify-center bg-emerald-50 border border-emerald-200 rounded-xl py-2 mx-1"
-                >
-                  <Text className="text-emerald-600 font-bold text-base font-mono mb-0.5">
-                    {day}
-                  </Text>
-                  <Ionicons name="checkmark" size={14} color="#059669" />
-                </View>
-              );
-            } else if (day === currentDay) {
+            if (day <= currentDay) {
               return (
                 <View
                   key={day}
@@ -425,9 +399,7 @@ export function ActiveChallengeBoard({
                   <Text className="text-white font-bold text-lg font-mono mb-0.5">
                     {day}
                   </Text>
-                  <Text className="text-indigo-100 text-[9px] font-main">
-                    امروز
-                  </Text>
+                  <Ionicons name="checkmark" size={14} color="white" />
                 </View>
               );
             } else {
@@ -451,12 +423,11 @@ export function ActiveChallengeBoard({
 
       <View className="flex-row items-center justify-center gap-2 bg-indigo-50 border border-indigo-100 rounded-2xl py-3.5 mb-4">
         <Text className="text-indigo-700 text-xs font-bold font-main">
-          چالش آغاز شده است! (نمایش آزمایشی)
+          رتبه‌بندی تیم‌ها بر اساس مجموع مطالعه تا امروز
         </Text>
-        <Ionicons name="information-circle-outline" size={18} color="#4338ca" />
+        <Ionicons name="trophy-outline" size={18} color="#4338ca" />
       </View>
 
-      {/* 🔴 هدر اشتراک‌گذاری */}
       <View className="flex-row items-center justify-between p-4 mb-4 bg-indigo-50/50 border border-indigo-100 rounded-[20px]">
         <View className="flex-row items-center gap-2">
           <Pressable
@@ -482,49 +453,64 @@ export function ActiveChallengeBoard({
         </View>
         <View className="flex-row items-center gap-2">
           <Text className="text-slate-800 font-bold text-sm font-main">
-            ارسال وضعیت روز
+            ارسال وضعیت
           </Text>
           <Text className="text-lg">📢</Text>
         </View>
       </View>
 
-      {teamNames.map((teamName, index) => {
-        const teamMembers = members.filter((m) => m.teamIndex === index);
+      {teamsData.map((team, index) => {
         const styles = getTeamStyles(index);
+        const isLeader =
+          index === 0 &&
+          teamsData.length > 1 &&
+          team.totalMinutes > teamsData[1].totalMinutes;
 
         return (
           <View
             key={index}
-            className={`${styles.bg} ${styles.border} border rounded-[20px] p-3 mb-5`}
+            className={`${styles.bg} ${styles.border} border rounded-[20px] p-3 mb-5 relative`}
           >
-            <View className="flex-row justify-between items-center mb-3 px-1">
+            {isLeader && (
+              <View className="absolute -top-3 -right-2 bg-amber-400 px-2 py-0.5 rounded-full border border-white z-10 shadow-sm shadow-amber-200">
+                <Text className="text-white text-[10px] font-bold font-main">
+                  تیم پیشتاز 👑
+                </Text>
+              </View>
+            )}
+            <View className="flex-row justify-between items-center mb-3 px-1 mt-1">
               <View
                 className={`${styles.badgeBg} px-3 py-1.5 rounded-lg border ${styles.cardBorder}`}
               >
                 <Text
                   className={`${styles.badgeText} text-[11px] font-bold font-main`}
                 >
-                  {teamMembers.length} عضو
+                  {formatTimeStr(team.totalMinutes)} کل
                 </Text>
               </View>
               <View className="flex-row items-center gap-2">
-                <Text className="text-lg">{index === 0 ? '🦅' : '🐯'}</Text>
-                <TextInput
-                  value={teamName}
-                  onChangeText={(text) => handleTeamNameChange(text, index)}
+                <Text className="text-lg">
+                  {index === 0 ? '🥇' : index === 1 ? '🥈' : '🔰'}
+                </Text>
+                <Text
                   className={`${styles.text} font-bold text-base font-main text-right p-0 m-0`}
-                  style={{ outlineStyle: 'none' } as any}
-                />
+                >
+                  {team.name}
+                </Text>
               </View>
             </View>
 
             <View className="gap-2.5">
-              {teamMembers.map((member, mIndex) => {
-                const currentH = Math.floor(member.currentMinutes / 60);
-                const progressPercent = Math.min(
-                  (member.currentMinutes / (member.targetHours * 60)) * 100,
-                  100
-                );
+              {team.members.map((member, mIndex) => {
+                const totalTargetForNow =
+                  member.dailyTargetMinutes * currentDay;
+                const progressPercent =
+                  totalTargetForNow > 0
+                    ? Math.min(
+                        (member.currentMinutes / totalTargetForNow) * 100,
+                        100
+                      )
+                    : 0;
 
                 return (
                   <View
@@ -533,7 +519,8 @@ export function ActiveChallengeBoard({
                   >
                     <View className="flex-row justify-between items-center mb-3">
                       <Text className="text-slate-500 font-mono text-[10px] font-bold">
-                        {currentH}h / {member.targetHours}h
+                        {formatTimeStr(member.currentMinutes)} /{' '}
+                        {formatTimeStr(totalTargetForNow)}
                       </Text>
                       <View className="flex-row items-center gap-3">
                         <Text className="text-slate-800 font-bold text-sm font-main">
@@ -568,15 +555,14 @@ export function ActiveChallengeBoard({
 
       <Pressable
         onPress={onEndChallenge}
-        className="w-full bg-rose-50 border border-rose-200 py-4 rounded-2xl items-center flex-row justify-center gap-2 active:scale-95 transition-transform mt-4"
+        className="w-full bg-rose-50 border border-rose-200 py-4 rounded-2xl items-center flex-row justify-center gap-2 active:scale-95 transition-transform mt-4 shadow-sm"
       >
         <Ionicons name="stop-circle-outline" size={20} color="#e11d48" />
         <Text className="text-rose-600 font-bold font-main text-sm">
-          خاتمه چالش
+          پایان قطعی چالش و اهدای مدال‌ها
         </Text>
       </Pressable>
 
-      {/* 🔴 مودال اشتراک‌گذاری */}
       <BottomSheetModal
         visible={isModalVisible}
         onClose={handleModalClose}
@@ -644,10 +630,9 @@ export function ActiveChallengeBoard({
                 )}
               </View>
             )}
-
             <Pressable
               onPress={() => handleSizeSelection(100)}
-              className="w-full py-4 rounded-2xl border border-indigo-100 bg-slate-50 items-center justify-center active:bg-indigo-100 transition-colors"
+              className="w-full py-4 rounded-2xl border border-indigo-100 bg-slate-50 items-center justify-center active:bg-indigo-100 transition-colors mb-3"
             >
               <Text className="text-indigo-700 font-bold font-main text-sm">
                 {actionType === 'TELEGRAM'
@@ -671,26 +656,6 @@ export function ActiveChallengeBoard({
             className="max-h-[400px] mt-2"
             showsVerticalScrollIndicator={false}
           >
-            <View className="flex-row items-center justify-between p-4 mb-3 rounded-2xl bg-indigo-50/50 border border-indigo-100">
-              <Pressable
-                onPress={async () => {
-                  await Clipboard.setStringAsync(
-                    '➖➖➖➖➖➖➖➖\n➖➖➖➖➖➖➖➖'
-                  );
-                  setCopiedChunks((prev) => new Set(prev).add(-1));
-                }}
-                className={`px-4 py-2 rounded-xl border ${copiedChunks.has(-1) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-indigo-200'} active:scale-95 transition-all`}
-              >
-                <Text
-                  className={`font-bold font-main text-xs ${copiedChunks.has(-1) ? 'text-white' : 'text-indigo-600'}`}
-                >
-                  {copiedChunks.has(-1) ? 'کپی شد' : 'کپی متن'}
-                </Text>
-              </Pressable>
-              <Text className="text-indigo-900 font-bold font-main text-sm">
-                خط جداکننده
-              </Text>
-            </View>
             {chunks.map((chunk, index) => {
               const isCopied = copiedChunks.has(index);
               return (

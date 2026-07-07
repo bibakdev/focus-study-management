@@ -1,3 +1,4 @@
+// src/features/study-room/presentation/components/ChallengeResultsBoard.tsx
 import { BottomSheetModal } from '@/shared/components/modals/BottomSheetModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -13,7 +14,6 @@ import {
 } from 'react-native';
 import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 
-// 🔴 اطلاعات اختصاصی ربات و چت‌ آیدی
 const TELEGRAM_BOT_TOKEN = '7770369278:AAFscQ98y0cd6NEepyfrKzQOIC7jya5POC0';
 const TELEGRAM_CHAT_ID = '8586178318';
 
@@ -92,7 +92,6 @@ export function ChallengeResultsBoard({
   const [chunks, setChunks] = useState<string[]>([]);
   const [copiedChunks, setCopiedChunks] = useState<Set<number>>(new Set());
 
-  // 🔴 تولید پیام تبریک انگلیسی
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
     let currentChunk = `🏆 CHALLENGE COMPLETED! 🏆\n➖➖➖➖➖➖➖➖\n`;
@@ -107,12 +106,9 @@ export function ChallengeResultsBoard({
 
     currentChunk += `\nWell done everyone! Keep up the great work! 💪`;
 
-    // با توجه به اینکه این پیام معمولاً کوتاه است، احتمالاً در یک بسته جا می‌شود
-    // اما برای حفظ ساختار اگر طولانی شد آن را می‌شکنیم
     if (currentChunk.length <= maxLength) {
       newChunks.push(currentChunk.trim());
     } else {
-      // شکستن ساده برای پیام‌های طولانی (در صورت نیاز)
       let temp = '';
       const lines = currentChunk.split('\n');
       lines.forEach((line) => {
@@ -285,7 +281,6 @@ export function ChallengeResultsBoard({
       exiting={FadeOut}
       className="w-full mt-2 pb-10"
     >
-      {/* 🔴 هدر اشتراک‌گذاری (با تم طلایی متناسب با کاپ قهرمانی) */}
       <View className="flex-row items-center justify-between p-4 mb-4 bg-amber-50/50 border border-amber-200 rounded-[20px]">
         <View className="flex-row items-center gap-2">
           <Pressable
@@ -317,7 +312,6 @@ export function ChallengeResultsBoard({
         </View>
       </View>
 
-      {/* کارت اصلی قهرمانی */}
       <View className="bg-amber-400 rounded-[32px] p-6 shadow-xl shadow-amber-200 border border-amber-300 relative overflow-hidden mb-6">
         <View className="absolute -top-10 -right-10 w-40 h-40 bg-white/20 rounded-full blur-2xl" />
         <View className="absolute -bottom-10 -left-10 w-40 h-40 bg-orange-500/20 rounded-full blur-2xl" />
@@ -332,7 +326,6 @@ export function ChallengeResultsBoard({
           </Text>
         </View>
 
-        {/* لیست 3 نفر برتر */}
         <View className="bg-white/90 rounded-2xl p-4 z-10">
           <Text className="text-amber-700 font-bold text-xs font-main mb-4 text-center">
             🌟 برترین‌های تیم برنده 🌟
@@ -376,7 +369,6 @@ export function ChallengeResultsBoard({
         </View>
       </View>
 
-      {/* دکمه شروع چالش جدید */}
       <Pressable
         onPress={onReset}
         className="w-full bg-slate-800 py-4 rounded-2xl items-center flex-row justify-center gap-2 active:scale-95 transition-transform shadow-md"
@@ -387,7 +379,6 @@ export function ChallengeResultsBoard({
         </Text>
       </Pressable>
 
-      {/* 🔴 مودال اشتراک‌گذاری */}
       <BottomSheetModal
         visible={isModalVisible}
         onClose={handleModalClose}
@@ -457,13 +448,23 @@ export function ChallengeResultsBoard({
             )}
 
             <Pressable
+              onPress={() => handleSizeSelection(100)}
+              className="w-full py-4 rounded-2xl border border-indigo-100 bg-slate-50 items-center justify-center active:bg-indigo-100 transition-colors mb-3"
+            >
+              <Text className="text-indigo-700 font-bold font-main text-sm">
+                {actionType === 'TELEGRAM'
+                  ? 'ارسال در بسته‌های ۱۰۰ کاراکتری'
+                  : 'کپی در بسته‌های ۱۰۰ کاراکتری'}
+              </Text>
+            </Pressable>
+            <Pressable
               onPress={() => handleSizeSelection(500)}
               className="w-full py-4 rounded-2xl border border-indigo-100 bg-slate-50 items-center justify-center active:bg-indigo-100 transition-colors"
             >
               <Text className="text-indigo-700 font-bold font-main text-sm">
                 {actionType === 'TELEGRAM'
-                  ? 'ارسال به عنوان یک پیام'
-                  : 'کپی به عنوان یک پیام'}
+                  ? 'ارسال در بسته‌های ۵۰۰ کاراکتری'
+                  : 'کپی در بسته‌های ۵۰۰ کاراکتری'}
               </Text>
             </Pressable>
           </View>
