@@ -11,6 +11,7 @@ import { and, desc, eq } from 'drizzle-orm';
 import { useLiveQuery } from 'drizzle-orm/expo-sqlite';
 import { useEffect, useState } from 'react';
 import { Alert } from 'react-native';
+import { GeminiService } from '../../../data/services/gemini.service';
 import { Member } from '../../../domain/entities/member';
 import { calculateSingleMemberStats } from '../../../domain/use-cases/calculate-single-member-stats';
 import {
@@ -19,6 +20,8 @@ import {
 } from '../../components/ExtractedUsersList';
 import { FinalLog } from '../../components/FinalLogsList';
 import { TimeTabPresentational } from './TimeTab.presentational';
+
+const GEMINI_API_KEY = process.env.EXPO_PUBLIC_GEMINI_API_KEY || '';
 
 interface TimeTabContainerProps {
   groupId: string;
@@ -49,6 +52,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
   const [activeDateId, setActiveDateId] = useState<string | null>(null);
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [isLoggingTime, setIsLoggingTime] = useState(false);
+  const [isAiLoading, setIsAiLoading] = useState(false);
 
   const [oldUsers, setOldUsers] = useState<ExtractedRecord[]>([]);
   const [newUsers, setNewUsers] = useState<ExtractedRecord[]>([]);
@@ -166,7 +170,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
             name: trimmedName,
             isActive: true,
             inBananaChallenge: true,
-            inGroupChallenge: false, // 🔴 چالش گروهی پیش‌فرض خاموش
+            inGroupChallenge: false,
             activeStreak: 0,
             highestActiveStreak: 0,
             absenceDays: 0,
@@ -298,6 +302,39 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
     }
   };
 
+  // 🔴 تغییر نوع ورودی به string[]
+  const handleAiProcessImages = async (base64Images: string[]) => {
+    if (!GEMINI_API_KEY) {
+      Alert.alert(
+        'خطا',
+        'لطفاً ابتدا کلید API خود را در فایل .env قرار داده و اپلیکیشن را ریستارت کنید.'
+      );
+      return;
+    }
+
+    setIsAiLoading(true);
+    try {
+      const responseText = await GeminiService.extractDataFromImages(
+        base64Images,
+        GEMINI_API_KEY
+      );
+
+      const cleanJson = responseText
+        .replace(/```json/gi, '')
+        .replace(/```/g, '')
+        .trim();
+
+      handleExtractJson(cleanJson);
+    } catch (error: any) {
+      Alert.alert(
+        'خطای هوش مصنوعی',
+        error.message || 'مشکلی در ارتباط با سرور رخ داد.'
+      );
+    } finally {
+      setIsAiLoading(false);
+    }
+  };
+
   const processApproval = async (record: ExtractedRecord) => {
     if (!activeDateId) return;
 
@@ -336,7 +373,7 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
         name: record.name.trim(),
         isActive: true,
         inBananaChallenge: true,
-        inGroupChallenge: false, // 🔴 پیش‌فرض خاموش برای کاربران مستخرج از JSON
+        inGroupChallenge: false,
         activeStreak: 0,
         highestActiveStreak: 0,
         absenceDays: 0,
@@ -557,7 +594,9 @@ export function TimeTabContainer({ groupId }: TimeTabContainerProps) {
       onEditDate={handleEditDate}
       onSubmitLog={handleSubmitLog}
       onExtractJson={handleExtractJson}
+      onProcessAiImages={handleAiProcessImages} // 🔴 نام متد جدید
       isLoggingTime={isLoggingTime}
+      isAiLoading={isAiLoading}
       extractedOldUsers={oldUsers}
       extractedNewUsers={newUsers}
       extractedConflicts={conflicts}

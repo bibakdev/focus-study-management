@@ -1,5 +1,7 @@
+// src/features/study-room/presentation/views/time-tab/TimeTab.presentational.tsx
 import { ScrollView, View } from 'react-native';
 import { Member } from '../../../domain/entities/member';
+import { AiImageExtraction } from '../../components/AiImageExtraction';
 import { DateSelector } from '../../components/DateSelector';
 import {
   ConflictGroup,
@@ -21,7 +23,9 @@ interface TimeTabPresentationalProps {
     minutes: number;
   }) => void;
   onExtractJson: (jsonString: string) => void;
+  onProcessAiImages: (base64Images: string[]) => void; // 🔴 آرایه از تصاویر
   isLoggingTime: boolean;
+  isAiLoading: boolean;
 
   extractedOldUsers: ExtractedRecord[];
   extractedNewUsers: ExtractedRecord[];
@@ -57,7 +61,9 @@ export function TimeTabPresentational({
   onEditDate,
   onSubmitLog,
   onExtractJson,
+  onProcessAiImages,
   isLoggingTime,
+  isAiLoading,
   extractedOldUsers,
   extractedNewUsers,
   extractedConflicts,
@@ -89,22 +95,26 @@ export function TimeTabPresentational({
 
         {selectedDate && (
           <View className="mt-2">
-            {/* ثبت دستی از شرط خارج شد تا همیشه زیر تاریخ قابل دسترس باشد */}
             <ManualTimeEntry
               members={members}
               onSubmit={onSubmitLog}
               isLoading={isLoggingTime}
             />
 
-            {/* باکس وارد کردن JSON فقط زمانی که دیتایی استخراج نشده نمایش داده می‌شود */}
             {!hasExtractedData && (
-              <JsonExtractionEntry
-                onExtract={onExtractJson}
-                isLoading={isLoggingTime}
-              />
+              <>
+                <AiImageExtraction
+                  onProcessImages={onProcessAiImages}
+                  isLoading={isAiLoading}
+                />
+
+                <JsonExtractionEntry
+                  onExtract={onExtractJson}
+                  isLoading={isLoggingTime}
+                />
+              </>
             )}
 
-            {/* لیست کاربران استخراج شده از JSON */}
             {hasExtractedData && (
               <ExtractedUsersList
                 oldUsers={extractedOldUsers}
@@ -117,7 +127,6 @@ export function TimeTabPresentational({
               />
             )}
 
-            {/* لیست نهایی (همیشه نمایش داده می‌شود) */}
             <FinalLogsList
               logs={finalLogs}
               onDeleteLog={onDeleteFinalLog}
