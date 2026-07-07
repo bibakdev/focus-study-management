@@ -57,6 +57,7 @@ export interface CalculatedTeamMember {
 export interface CalculatedTeam {
   name: string;
   totalMinutes: number;
+  totalTargetMinutes: number;
   members: CalculatedTeamMember[];
 }
 
@@ -127,10 +128,19 @@ const getTeamStyles = (index: number) => {
 const formatTimeStr = (minutes: number) => {
   if (minutes === 0) return '0m';
   const h = Math.floor(minutes / 60);
-  const m = minutes % 60;
+  const m = Math.round(minutes % 60);
   if (h > 0 && m > 0) return `${h}h ${m}m`;
   if (h > 0) return `${h}h`;
   return `${m}m`;
+};
+
+const formatTimeFa = (minutes: number) => {
+  if (minutes === 0) return '0 دقیقه';
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h > 0 && m > 0) return `${h} ساعت و ${m} دقیقه`;
+  if (h > 0) return `${h} ساعت`;
+  return `${m} دقیقه`;
 };
 
 export function ActiveChallengeBoard({
@@ -144,7 +154,6 @@ export function ActiveChallengeBoard({
 }: ActiveChallengeBoardProps) {
   const daysArray = Array.from({ length: duration }, (_, i) => i + 1);
 
-  // استیت‌های مربوط به مدال ارسال/کپی دیتا
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [actionType, setActionType] = useState<'COPY' | 'TELEGRAM' | null>(
@@ -156,19 +165,16 @@ export function ActiveChallengeBoard({
   const [chunks, setChunks] = useState<string[]>([]);
   const [copiedChunks, setCopiedChunks] = useState<Set<number>>(new Set());
 
-  // استیت‌های مربوط به مدال ویرایش نام تیم (روش جدید)
   const [isEditTeamModalVisible, setIsEditTeamModalVisible] = useState(false);
   const [teamToEdit, setTeamToEdit] = useState('');
   const [editTeamInput, setEditTeamInput] = useState('');
 
-  // باز کردن مدال ویرایش
   const handleOpenEditModal = (currentName: string) => {
     setTeamToEdit(currentName);
     setEditTeamInput(currentName);
     setIsEditTeamModalVisible(true);
   };
 
-  // ذخیره نام تیم
   const handleSaveTeamEdit = () => {
     if (!editTeamInput.trim()) {
       Alert.alert('دقت کنید', 'نام تیم نمی‌تواند خالی باشد.');
@@ -186,28 +192,30 @@ export function ActiveChallengeBoard({
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
 
-    // ۱. ساخت هدر انگلیسی و قرار دادن در پیام مجزا
     const headerChunk = `⚔️ Group Challenge Status (Day ${currentDay} of ${duration})\n➖➖➖➖➖➖➖➖`;
     newChunks.push(headerChunk);
 
-    // ۲. پردازش هر تیم
     teamsData.forEach((team, index) => {
       if (team.members.length === 0) return;
 
-      const teamIcon = index === 0 ? '🦅' : index === 1 ? '🐯' : '🔰';
+      const teamIcon = index === 0 ? '🥇' : index === 1 ? '🥈' : '🥉';
 
-      // هدر اصلی تیم همراه با مجموع تایم
-      const teamHeader = `${teamIcon} ${team.name} (${formatTimeStr(team.totalMinutes)}):\n`;
-      // هدر در صورت شکسته شدن پیام (بدون کلمه ادامه و تایم)
+      const isLeader =
+        index === 0 &&
+        teamsData.length > 1 &&
+        team.totalMinutes > teamsData[1].totalMinutes;
+      const leaderBadge = isLeader ? ' 👑' : '';
+
+      const targetStr = formatTimeStr(team.totalTargetMinutes * currentDay);
+      const teamHeader = `${teamIcon} ${team.name}${leaderBadge} (Total: ${formatTimeStr(team.totalMinutes)} | Target: ${targetStr}):\n`;
       const teamHeaderContinuation = `${teamIcon} ${team.name}:\n`;
 
       let currentChunk = teamHeader;
 
       team.members.forEach((m, mIndex) => {
         const studyStr = formatTimeStr(m.currentMinutes);
-        const targetStr = formatTimeStr(m.dailyTargetMinutes * currentDay);
-        // فرمت جلوی اسم اعضا طبق درخواست
-        const line = `  ${mIndex + 1}. ${m.name} - ${studyStr} (${targetStr})\n`;
+        const memTargetStr = formatTimeStr(m.dailyTargetMinutes * currentDay);
+        const line = `  ${mIndex + 1}. ${m.name} - Study: ${studyStr} | Target: ${memTargetStr}\n`;
 
         if (
           (currentChunk + line).length > maxLength &&
@@ -520,7 +528,8 @@ export function ActiveChallengeBoard({
                 <Text
                   className={`${styles.badgeText} text-[11px] font-bold font-main`}
                 >
-                  {formatTimeStr(team.totalMinutes)} کل
+                  مطالعه: {formatTimeFa(team.totalMinutes)} | هدف:{' '}
+                  {formatTimeFa(team.totalTargetMinutes * currentDay)}
                 </Text>
               </View>
 
@@ -560,9 +569,12 @@ export function ActiveChallengeBoard({
                     className={`bg-white rounded-2xl p-4 border ${styles.cardBorder} shadow-sm shadow-slate-100`}
                   >
                     <View className="flex-row justify-between items-center mb-3">
-                      <Text className="text-slate-500 font-mono text-[10px] font-bold">
-                        {formatTimeStr(member.currentMinutes)} /{' '}
-                        {formatTimeStr(totalTargetForNow)}
+                      <Text
+                        className="text-slate-500 text-[10px] font-bold font-main"
+                        style={{ direction: 'rtl' }}
+                      >
+                        مطالعه: {formatTimeFa(member.currentMinutes)} | هدف:{' '}
+                        {formatTimeFa(totalTargetForNow)}
                       </Text>
                       <View className="flex-row items-center gap-3">
                         <Text className="text-slate-800 font-bold text-sm font-main">
@@ -605,7 +617,6 @@ export function ActiveChallengeBoard({
         </Text>
       </Pressable>
 
-      {/* مدال ارسال به تلگرام / کپی */}
       <BottomSheetModal
         visible={isModalVisible}
         onClose={handleModalClose}
@@ -653,6 +664,7 @@ export function ActiveChallengeBoard({
                     </Text>
                   </Pressable>
                 </View>
+
                 {destination === 'TOPIC' && (
                   <Animated.View entering={FadeIn} exiting={FadeOut}>
                     <TextInput
@@ -669,10 +681,14 @@ export function ActiveChallengeBoard({
                       value={topicLink}
                       onChangeText={setTopicLink}
                     />
+                    <Text className="text-slate-400 text-[10px] font-main mt-2 text-right">
+                      لینک یکی از پیام‌های داخل گروه یا تاپیک را پیست کنید.
+                    </Text>
                   </Animated.View>
                 )}
               </View>
             )}
+
             <Pressable
               onPress={() => handleSizeSelection(100)}
               className="w-full py-4 rounded-2xl border border-indigo-100 bg-slate-50 items-center justify-center active:bg-indigo-100 transition-colors mb-3"
@@ -699,6 +715,27 @@ export function ActiveChallengeBoard({
             className="max-h-[400px] mt-2"
             showsVerticalScrollIndicator={false}
           >
+            <View className="flex-row items-center justify-between p-4 mb-3 rounded-2xl bg-indigo-50/50 border border-indigo-100">
+              <Pressable
+                onPress={async () => {
+                  await Clipboard.setStringAsync(
+                    '➖➖➖➖➖➖➖➖\n➖➖➖➖➖➖➖➖'
+                  );
+                  setCopiedChunks((prev) => new Set(prev).add(-1));
+                }}
+                className={`px-4 py-2 rounded-xl border ${copiedChunks.has(-1) ? 'bg-indigo-600 border-indigo-600' : 'bg-white border-indigo-200'} active:scale-95 transition-all`}
+              >
+                <Text
+                  className={`font-bold font-main text-xs ${copiedChunks.has(-1) ? 'text-white' : 'text-indigo-600'}`}
+                >
+                  {copiedChunks.has(-1) ? 'کپی شد' : 'کپی متن'}
+                </Text>
+              </Pressable>
+              <Text className="text-indigo-900 font-bold font-main text-sm">
+                خط جداکننده
+              </Text>
+            </View>
+
             {chunks.map((chunk, index) => {
               const isCopied = copiedChunks.has(index);
               return (
@@ -716,7 +753,9 @@ export function ActiveChallengeBoard({
                       {isCopied ? 'کپی شد' : 'کپی متن'}
                     </Text>
                   </Pressable>
-                  <Text className="text-indigo-900 font-bold font-main text-sm">{`بسته ${index + 1}`}</Text>
+                  <Text className="text-indigo-900 font-bold font-main text-sm">
+                    {`بسته ${index + 1}`}
+                  </Text>
                 </View>
               );
             })}

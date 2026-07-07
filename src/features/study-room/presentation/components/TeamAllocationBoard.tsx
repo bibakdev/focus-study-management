@@ -19,6 +19,24 @@ import Animated, { FadeIn, FadeOut, Layout } from 'react-native-reanimated';
 const TELEGRAM_BOT_TOKEN = '7770369278:AAFscQ98y0cd6NEepyfrKzQOIC7jya5POC0';
 const TELEGRAM_CHAT_ID = '8586178318';
 
+const formatTimeStr = (minutes: number) => {
+  if (minutes === 0) return '0m';
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h > 0 && m > 0) return `${h}h ${m}m`;
+  if (h > 0) return `${h}h`;
+  return `${m}m`;
+};
+
+const formatTimeFa = (minutes: number) => {
+  if (minutes === 0) return '0 دقیقه';
+  const h = Math.floor(minutes / 60);
+  const m = Math.round(minutes % 60);
+  if (h > 0 && m > 0) return `${h} ساعت و ${m} دقیقه`;
+  if (h > 0) return `${h} ساعت`;
+  return `${m} دقیقه`;
+};
+
 function parseTelegramLink(
   link: string
 ): { chatId: string; topicId?: string } | null {
@@ -48,6 +66,7 @@ export interface TeamMember {
   id: string;
   name: string;
   target: string;
+  dailyTargetMinutes: number;
   teamIndex: number;
 }
 
@@ -148,7 +167,7 @@ function MemberCard({ member, teamNames, teamStyle, onMove, onRemove }: any) {
               {member.name}
             </Text>
             <Text className="text-slate-400 text-[10px] font-main">
-              تارگت: {member.target}
+              هدف: {member.target}
             </Text>
           </View>
           <Pressable
@@ -234,22 +253,23 @@ export function TeamAllocationBoard({
     setMembers((prev) => prev.filter((m) => m.id !== id));
   };
 
-  // 🔴 بازنویسی تابع برای جداسازی هدر و کاملاً انگلیسی کردن متن‌ها
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
 
-    // ۱. هدر جداگانه انگلیسی
     const headerChunk = '⚔️ Team Allocation\n➖➖➖➖➖➖➖➖';
     newChunks.push(headerChunk);
 
-    // ۲. پردازش و ساخت لیست هر تیم
     teamNames.forEach((teamName, index) => {
       const teamMembers = members.filter((m) => m.teamIndex === index);
       if (teamMembers.length === 0) return;
 
       const teamIcon = index === 0 ? '🦅' : index === 1 ? '🐯' : '🔰';
+      const teamTotalTargetMins = teamMembers.reduce(
+        (sum, m) => sum + (m.dailyTargetMinutes || 0),
+        0
+      );
 
-      const teamHeader = `${teamIcon} ${teamName} (${teamMembers.length} Members):\n`;
+      const teamHeader = `${teamIcon} ${teamName} (Target: ${formatTimeStr(teamTotalTargetMins)}):\n`;
       const teamHeaderContinuation = `${teamIcon} ${teamName}:\n`;
 
       let currentChunk = teamHeader;
@@ -478,6 +498,10 @@ export function TeamAllocationBoard({
       {teamNames.map((teamName, index) => {
         const teamMembers = members.filter((m) => m.teamIndex === index);
         const styles = getTeamStyles(index);
+        const teamTotalTargetMins = teamMembers.reduce(
+          (sum, m) => sum + (m.dailyTargetMinutes || 0),
+          0
+        );
 
         return (
           <View
@@ -491,7 +515,8 @@ export function TeamAllocationBoard({
                 <Text
                   className={`${styles.badgeText} text-[11px] font-bold font-main`}
                 >
-                  {teamMembers.length} عضو
+                  {teamMembers.length} عضو | هدف:{' '}
+                  {formatTimeFa(teamTotalTargetMins)}
                 </Text>
               </View>
               <Text className={`${styles.text} font-bold text-sm font-main`}>

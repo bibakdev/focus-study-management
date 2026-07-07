@@ -168,7 +168,7 @@ export function GroupChallengeTabContainer({
       allocatedMembers.push({
         id: m.id,
         name: m.name,
-        target: m.targetStr, // 🔴 مشکل اینجا بود (تغییر از targetStr به target)
+        target: m.targetStr,
         dailyTargetMinutes: m.power,
         teamIndex: minTeamIndex
       });
@@ -371,9 +371,15 @@ export function GroupChallengeTabContainer({
         (sum: number, curr: any) => sum + curr.currentMinutes,
         0
       );
+      const teamTotalTarget = tMembers.reduce(
+        (sum: number, curr: any) => sum + (curr.dailyTargetMinutes || 0),
+        0
+      );
+
       return {
         name: teamName,
         totalMinutes: teamTotal,
+        totalTargetMinutes: teamTotalTarget,
         members: tMembers.sort(
           (a: any, b: any) => b.currentMinutes - a.currentMinutes
         )
