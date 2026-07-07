@@ -217,7 +217,8 @@ export function ActiveChallengeBoard({
       team.members.forEach((m, mIndex) => {
         const studyStr = formatTimeStr(m.currentMinutes);
         const memTargetStr = formatTimeStr(m.dailyTargetMinutes * currentDay);
-        const line = `  ${mIndex + 1}. ${m.name} - Study: ${studyStr} | Target: ${memTargetStr}\n`;
+        // تغییر مهم: افزودن دو بار \n برای ایجاد فاصله بین کاربران
+        const line = `  ${mIndex + 1}. ${m.name} - Study: ${studyStr} | Target: ${memTargetStr}\n\n`;
 
         if (
           (currentChunk + line).length > maxLength &&
@@ -619,7 +620,6 @@ export function ActiveChallengeBoard({
         </Text>
       </Pressable>
 
-      {/* 🔴 دکمه جدید برای لغو و حذف کامل چالش */}
       <Pressable
         onPress={onCancelChallenge}
         className="w-full bg-slate-50 border border-slate-200 py-4 rounded-2xl items-center flex-row justify-center gap-2 active:scale-95 transition-transform mt-3 shadow-sm"

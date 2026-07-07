@@ -275,7 +275,8 @@ export function TeamAllocationBoard({
       let currentChunk = teamHeader;
 
       teamMembers.forEach((m, mIndex) => {
-        const line = `  ${mIndex + 1}. ${m.name} - Target: ${m.target}\n`;
+        // تغییر مهم: افزودن دو بار \n برای ایجاد فاصله بین کاربران
+        const line = `  ${mIndex + 1}. ${m.name} - Target: ${m.target}\n\n`;
 
         if (
           (currentChunk + line).length > maxLength &&

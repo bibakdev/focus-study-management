@@ -171,15 +171,9 @@ export function RankingSection({
         lines.push(`${prefix}${item.name} - ${timeStr}`);
       }
 
-      if (isBananaRanking) {
-        const nextItem = data[index + 1];
-        if (chunkSize === 100) {
-          if (index < data.length - 1) lines.push('');
-        } else {
-          if (nextItem && nextItem.sortScore !== item.sortScore) lines.push('');
-        }
-      } else {
-        if (index < data.length - 1) lines.push('');
+      // فاصله ایجاد کردن بین تمام المان‌ها به صورت یکپارچه
+      if (index < data.length - 1) {
+        lines.push('');
       }
     });
 
