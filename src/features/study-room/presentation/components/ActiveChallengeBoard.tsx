@@ -67,6 +67,7 @@ interface ActiveChallengeBoardProps {
   duration: number;
   onUpdateTeamName: (oldName: string, newName: string) => void;
   onEndChallenge: () => void;
+  onCancelChallenge: () => void;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
 }
@@ -149,6 +150,7 @@ export function ActiveChallengeBoard({
   duration,
   onUpdateTeamName,
   onEndChallenge,
+  onCancelChallenge,
   initialTopicLink,
   onTopicLinkSave
 }: ActiveChallengeBoardProps) {
@@ -614,6 +616,17 @@ export function ActiveChallengeBoard({
         <Ionicons name="stop-circle-outline" size={20} color="#e11d48" />
         <Text className="text-rose-600 font-bold font-main text-sm">
           پایان قطعی چالش و اهدای مدال‌ها
+        </Text>
+      </Pressable>
+
+      {/* 🔴 دکمه جدید برای لغو و حذف کامل چالش */}
+      <Pressable
+        onPress={onCancelChallenge}
+        className="w-full bg-slate-50 border border-slate-200 py-4 rounded-2xl items-center flex-row justify-center gap-2 active:scale-95 transition-transform mt-3 shadow-sm"
+      >
+        <Ionicons name="trash-outline" size={20} color="#64748b" />
+        <Text className="text-slate-600 font-bold font-main text-sm">
+          حذف چالش (بدون ذخیره نتیجه)
         </Text>
       </Pressable>
 

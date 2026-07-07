@@ -23,6 +23,7 @@ interface GroupChallengeTabPresentationalProps {
   onStartFinalChallenge: (finalMembers: any[]) => void;
   onUpdateTeamName: (oldName: string, newName: string) => void;
   onEndChallenge: () => void;
+  onCancelChallenge: () => void; // 🔴 اضافه شدن تابع
   onResetChallenge: () => void;
   challengeSettings: any;
   dummyWinnerData: { teamName: string; topMembers: TopMember[] } | null;
@@ -45,6 +46,7 @@ export function GroupChallengeTabPresentational({
   onStartFinalChallenge,
   onUpdateTeamName,
   onEndChallenge,
+  onCancelChallenge, // 🔴 اضافه شدن تابع
   onResetChallenge,
   challengeSettings,
   dummyWinnerData,
@@ -92,6 +94,7 @@ export function GroupChallengeTabPresentational({
                 duration={duration}
                 onUpdateTeamName={onUpdateTeamName}
                 onEndChallenge={onEndChallenge}
+                onCancelChallenge={onCancelChallenge} // 🔴 پاس دادن تابع
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
               />

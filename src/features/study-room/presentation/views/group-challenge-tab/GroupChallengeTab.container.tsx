@@ -291,6 +291,33 @@ export function GroupChallengeTabContainer({
     );
   };
 
+  // 🔴 حذف کامل چالش (بدون ثبت مدال و نتایج)
+  const handleCancelChallenge = () => {
+    Alert.alert(
+      'حذف چالش',
+      'آیا از حذف این چالش اطمینان دارید؟ نتایج این چالش ثبت نخواهد شد و گروه به حالت عادی برمی‌گردد.',
+      [
+        { text: 'انصراف', style: 'cancel' },
+        {
+          text: 'حذف چالش',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await db
+                .update(groups)
+                .set({
+                  activeChallengeData: null
+                })
+                .where(eq(groups.id, groupId));
+            } catch (e) {
+              Alert.alert('خطا', 'مشکلی در حذف چالش رخ داد.');
+            }
+          }
+        }
+      ]
+    );
+  };
+
   const handleResetChallenge = async () => {
     await db
       .update(groups)
@@ -401,6 +428,7 @@ export function GroupChallengeTabContainer({
       onStartFinalChallenge={handleStartFinalChallenge}
       onUpdateTeamName={handleUpdateTeamName} // ارسال تابع ویرایش نام
       onEndChallenge={handleEndChallenge}
+      onCancelChallenge={handleCancelChallenge} // 🔴 پاس دادن تابع حذف
       onResetChallenge={handleResetChallenge}
       challengeSettings={challengeSettings}
       dummyWinnerData={dummyWinnerData}
