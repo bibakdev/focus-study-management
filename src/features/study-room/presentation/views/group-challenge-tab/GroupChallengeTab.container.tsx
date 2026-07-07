@@ -168,7 +168,7 @@ export function GroupChallengeTabContainer({
       allocatedMembers.push({
         id: m.id,
         name: m.name,
-        targetStr: m.targetStr,
+        target: m.targetStr, // 🔴 مشکل اینجا بود (تغییر از targetStr به target)
         dailyTargetMinutes: m.power,
         teamIndex: minTeamIndex
       });
@@ -196,6 +196,29 @@ export function GroupChallengeTabContainer({
       setHasStartedChallenge(false);
     } catch (e) {
       Alert.alert('خطا', 'مشکلی در شروع چالش رخ داد.');
+    }
+  };
+
+  // ویرایش نام تیم در زمان اجرای چالش
+  const handleUpdateTeamName = async (oldName: string, newName: string) => {
+    if (!currentGroup?.activeChallengeData || !newName.trim()) return;
+
+    try {
+      const activeData = JSON.parse(currentGroup.activeChallengeData);
+
+      // پیدا کردن ایندکس تیم در آرایه اصلی (چون لیست در UI مرتب شده است)
+      const teamIdx = activeData.teams.findIndex((t: string) => t === oldName);
+
+      if (teamIdx !== -1) {
+        activeData.teams[teamIdx] = newName.trim();
+
+        await db
+          .update(groups)
+          .set({ activeChallengeData: JSON.stringify(activeData) })
+          .where(eq(groups.id, groupId));
+      }
+    } catch (error) {
+      Alert.alert('خطا', 'مشکلی در ویرایش نام تیم رخ داد.');
     }
   };
 
@@ -370,6 +393,7 @@ export function GroupChallengeTabContainer({
       isChallengeActive={isChallengeActive}
       isChallengeFinished={isChallengeFinished}
       onStartFinalChallenge={handleStartFinalChallenge}
+      onUpdateTeamName={handleUpdateTeamName} // ارسال تابع ویرایش نام
       onEndChallenge={handleEndChallenge}
       onResetChallenge={handleResetChallenge}
       challengeSettings={challengeSettings}

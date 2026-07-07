@@ -53,8 +53,8 @@ export interface TeamMember {
 
 interface TeamAllocationBoardProps {
   teamNames: string[];
-  initialMembers: TeamMember[]; // 🔴 پراپ جدید برای دریافت تیم‌بندی حریصانه
-  onFinalStart: (finalMembers: TeamMember[]) => void; // 🔴 ارسال لیست نهایی به بالا
+  initialMembers: TeamMember[];
+  onFinalStart: (finalMembers: TeamMember[]) => void;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
 }
@@ -207,10 +207,8 @@ export function TeamAllocationBoard({
   initialTopicLink,
   onTopicLinkSave
 }: TeamAllocationBoardProps) {
-  // 🔴 مقداردهی استیت با اطلاعات الگوریتم
   const [members, setMembers] = useState<TeamMember[]>(initialMembers);
 
-  // در صورت تغییر در بالا، آپدیت شود
   useEffect(() => {
     setMembers(initialMembers);
   }, [initialMembers]);
@@ -236,50 +234,45 @@ export function TeamAllocationBoard({
     setMembers((prev) => prev.filter((m) => m.id !== id));
   };
 
+  // 🔴 بازنویسی تابع برای جداسازی هدر و کاملاً انگلیسی کردن متن‌ها
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
-    const mainHeader = '⚔️ تیم‌بندی چالش گروهی\n➖➖➖➖➖➖➖➖\n';
-    let currentChunk = mainHeader;
 
+    // ۱. هدر جداگانه انگلیسی
+    const headerChunk = '⚔️ Team Allocation\n➖➖➖➖➖➖➖➖';
+    newChunks.push(headerChunk);
+
+    // ۲. پردازش و ساخت لیست هر تیم
     teamNames.forEach((teamName, index) => {
       const teamMembers = members.filter((m) => m.teamIndex === index);
       if (teamMembers.length === 0) return;
 
-      if (currentChunk !== mainHeader && currentChunk.trim() !== '') {
-        newChunks.push(currentChunk.trim());
-        currentChunk = '';
-      }
-
       const teamIcon = index === 0 ? '🦅' : index === 1 ? '🐯' : '🔰';
-      const teamHeader = `${teamIcon} ${teamName} (${teamMembers.length} عضو):\n`;
 
-      if (
-        (currentChunk + teamHeader).length > maxLength &&
-        currentChunk.trim() !== ''
-      ) {
-        newChunks.push(currentChunk.trim());
-        currentChunk = teamHeader;
-      } else {
-        currentChunk += teamHeader;
-      }
+      const teamHeader = `${teamIcon} ${teamName} (${teamMembers.length} Members):\n`;
+      const teamHeaderContinuation = `${teamIcon} ${teamName}:\n`;
+
+      let currentChunk = teamHeader;
 
       teamMembers.forEach((m, mIndex) => {
-        const line = `  ${mIndex + 1}. ${m.name} - تارگت: ${m.target}\n`;
+        const line = `  ${mIndex + 1}. ${m.name} - Target: ${m.target}\n`;
+
         if (
           (currentChunk + line).length > maxLength &&
-          currentChunk.trim() !== ''
+          currentChunk !== teamHeader &&
+          currentChunk !== teamHeaderContinuation
         ) {
-          newChunks.push(currentChunk.trim());
-          currentChunk = `${teamIcon} ${teamName} (ادامه):\n` + line;
+          newChunks.push(currentChunk.trimEnd());
+          currentChunk = teamHeaderContinuation + line;
         } else {
           currentChunk += line;
         }
       });
-    });
 
-    if (currentChunk.trim() !== '') {
-      newChunks.push(currentChunk.trim());
-    }
+      if (currentChunk.trim() !== '') {
+        newChunks.push(currentChunk.trimEnd());
+      }
+    });
 
     return newChunks;
   };
@@ -482,7 +475,6 @@ export function TeamAllocationBoard({
         </View>
       </View>
 
-      {/* رندر کردن باکس تیم‌ها */}
       {teamNames.map((teamName, index) => {
         const teamMembers = members.filter((m) => m.teamIndex === index);
         const styles = getTeamStyles(index);
@@ -532,7 +524,7 @@ export function TeamAllocationBoard({
       })}
 
       <Pressable
-        onPress={() => onFinalStart(members)} // 🔴 ارسال لیست فعلی به کانتینر
+        onPress={() => onFinalStart(members)}
         className="w-full bg-[#10b981] py-4 rounded-2xl items-center flex-row justify-center gap-2 active:scale-95 transition-transform mt-2 mb-8 shadow-md shadow-emerald-200"
       >
         <Text className="text-white font-bold font-main text-sm">

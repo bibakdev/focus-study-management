@@ -1,4 +1,7 @@
 // src/features/study-room/presentation/components/ActiveChallengeBoard.tsx
+import { PrimaryActionButton } from '@/shared/components/buttons/PrimaryActionButton';
+import { SecondaryButton } from '@/shared/components/buttons/SecondaryButton';
+import { TextInputWithIcon } from '@/shared/components/inputs/TextInputWithIcon';
 import { BottomSheetModal } from '@/shared/components/modals/BottomSheetModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -6,6 +9,7 @@ import { useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Keyboard,
   Pressable,
   ScrollView,
   Text,
@@ -60,6 +64,7 @@ interface ActiveChallengeBoardProps {
   teamsData: CalculatedTeam[];
   currentDay: number;
   duration: number;
+  onUpdateTeamName: (oldName: string, newName: string) => void;
   onEndChallenge: () => void;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
@@ -132,12 +137,14 @@ export function ActiveChallengeBoard({
   teamsData,
   currentDay,
   duration,
+  onUpdateTeamName,
   onEndChallenge,
   initialTopicLink,
   onTopicLinkSave
 }: ActiveChallengeBoardProps) {
   const daysArray = Array.from({ length: duration }, (_, i) => i + 1);
 
+  // استیت‌های مربوط به مدال ارسال/کپی دیتا
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
   const [actionType, setActionType] = useState<'COPY' | 'TELEGRAM' | null>(
@@ -148,6 +155,33 @@ export function ActiveChallengeBoard({
   const [modalStep, setModalStep] = useState<'size' | 'chunks'>('size');
   const [chunks, setChunks] = useState<string[]>([]);
   const [copiedChunks, setCopiedChunks] = useState<Set<number>>(new Set());
+
+  // استیت‌های مربوط به مدال ویرایش نام تیم (روش جدید)
+  const [isEditTeamModalVisible, setIsEditTeamModalVisible] = useState(false);
+  const [teamToEdit, setTeamToEdit] = useState('');
+  const [editTeamInput, setEditTeamInput] = useState('');
+
+  // باز کردن مدال ویرایش
+  const handleOpenEditModal = (currentName: string) => {
+    setTeamToEdit(currentName);
+    setEditTeamInput(currentName);
+    setIsEditTeamModalVisible(true);
+  };
+
+  // ذخیره نام تیم
+  const handleSaveTeamEdit = () => {
+    if (!editTeamInput.trim()) {
+      Alert.alert('دقت کنید', 'نام تیم نمی‌تواند خالی باشد.');
+      return;
+    }
+
+    if (teamToEdit && editTeamInput.trim() !== teamToEdit) {
+      onUpdateTeamName(teamToEdit, editTeamInput.trim());
+    }
+
+    setIsEditTeamModalVisible(false);
+    Keyboard.dismiss();
+  };
 
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
@@ -478,6 +512,7 @@ export function ActiveChallengeBoard({
                 </Text>
               </View>
             )}
+
             <View className="flex-row justify-between items-center mb-3 px-1 mt-1">
               <View
                 className={`${styles.badgeBg} px-3 py-1.5 rounded-lg border ${styles.cardBorder}`}
@@ -488,7 +523,14 @@ export function ActiveChallengeBoard({
                   {formatTimeStr(team.totalMinutes)} کل
                 </Text>
               </View>
+
               <View className="flex-row items-center gap-2">
+                <Pressable
+                  onPress={() => handleOpenEditModal(team.name)}
+                  className="active:opacity-60 p-1 bg-white/50 rounded-lg"
+                >
+                  <Ionicons name="pencil" size={14} color="#94a3b8" />
+                </Pressable>
                 <Text className="text-lg">
                   {index === 0 ? '🥇' : index === 1 ? '🥈' : '🔰'}
                 </Text>
@@ -563,6 +605,7 @@ export function ActiveChallengeBoard({
         </Text>
       </Pressable>
 
+      {/* مدال ارسال به تلگرام / کپی */}
       <BottomSheetModal
         visible={isModalVisible}
         onClose={handleModalClose}
@@ -679,6 +722,38 @@ export function ActiveChallengeBoard({
             })}
           </ScrollView>
         )}
+      </BottomSheetModal>
+
+      {/* مدال ویرایش نام تیم */}
+      <BottomSheetModal
+        visible={isEditTeamModalVisible}
+        onClose={() => setIsEditTeamModalVisible(false)}
+        title="ویرایش نام تیم"
+        description="نام جدید تیم را وارد کنید. این نام در جدول و لیست ارسالی تغییر می‌کند."
+      >
+        <View className="gap-4 mt-2">
+          <TextInputWithIcon
+            iconName="pencil"
+            placeholder="نام تیم..."
+            value={editTeamInput}
+            onChangeText={setEditTeamInput}
+          />
+
+          <View className="flex-row gap-3 mt-4">
+            <View className="flex-1">
+              <SecondaryButton
+                label="انصراف"
+                onPress={() => setIsEditTeamModalVisible(false)}
+              />
+            </View>
+            <View className="flex-1">
+              <PrimaryActionButton
+                label="ذخیره نام"
+                onPress={handleSaveTeamEdit}
+              />
+            </View>
+          </View>
+        </View>
       </BottomSheetModal>
     </Animated.View>
   );

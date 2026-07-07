@@ -21,6 +21,7 @@ interface GroupChallengeTabPresentationalProps {
   isChallengeActive: boolean;
   isChallengeFinished: boolean;
   onStartFinalChallenge: (finalMembers: any[]) => void;
+  onUpdateTeamName: (oldName: string, newName: string) => void;
   onEndChallenge: () => void;
   onResetChallenge: () => void;
   challengeSettings: any;
@@ -42,6 +43,7 @@ export function GroupChallengeTabPresentational({
   isChallengeActive,
   isChallengeFinished,
   onStartFinalChallenge,
+  onUpdateTeamName,
   onEndChallenge,
   onResetChallenge,
   challengeSettings,
@@ -88,6 +90,7 @@ export function GroupChallengeTabPresentational({
                 teamsData={teamsData}
                 currentDay={currentDay}
                 duration={duration}
+                onUpdateTeamName={onUpdateTeamName}
                 onEndChallenge={onEndChallenge}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
