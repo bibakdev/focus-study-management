@@ -1,4 +1,5 @@
 // src/features/study-room/presentation/components/ChallengeResultsBoard.tsx
+import { convertToImperialDate } from '@/core/utils/date';
 import { BottomSheetModal } from '@/shared/components/modals/BottomSheetModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -55,6 +56,7 @@ interface ChallengeResultsBoardProps {
   onReset: () => void;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
+  selectedDate?: string | null;
 }
 
 const formatTimeFa = (minutes: number) => {
@@ -79,7 +81,8 @@ export function ChallengeResultsBoard({
   topMembers,
   onReset,
   initialTopicLink,
-  onTopicLinkSave
+  onTopicLinkSave,
+  selectedDate
 }: ChallengeResultsBoardProps) {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isSending, setIsSending] = useState(false);
@@ -94,8 +97,13 @@ export function ChallengeResultsBoard({
 
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
-    let currentChunk = `🏆 CHALLENGE COMPLETED! 🏆\n➖➖➖➖➖➖➖➖\n`;
+    let currentChunk = `🏆 CHALLENGE COMPLETED! 🏆\n`;
 
+    if (selectedDate) {
+      currentChunk += `📅 ${convertToImperialDate(selectedDate)}\n`;
+    }
+
+    currentChunk += `➖➖➖➖➖➖➖➖\n`;
     currentChunk += `🥳 Huge congratulations to team **${winningTeamName}** for their outstanding performance and ultimate victory! 🎉\n\n`;
     currentChunk += `🌟 Top Performers 🌟\n`;
 

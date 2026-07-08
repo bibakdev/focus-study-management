@@ -59,6 +59,7 @@ export function RankingTabPresentational({
                 filterActive={minFilterMinutes > 0}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
+                selectedDate={selectedDate}
               />
 
               <RankingSection
@@ -69,6 +70,7 @@ export function RankingTabPresentational({
                 data={recordBreakers}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
+                selectedDate={selectedDate}
               />
             </View>
           )}

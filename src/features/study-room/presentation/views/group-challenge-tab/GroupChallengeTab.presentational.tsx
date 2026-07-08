@@ -23,7 +23,7 @@ interface GroupChallengeTabPresentationalProps {
   onStartFinalChallenge: (finalMembers: any[]) => void;
   onUpdateTeamName: (oldName: string, newName: string) => void;
   onEndChallenge: () => void;
-  onCancelChallenge: () => void; // 🔴 اضافه شدن تابع
+  onCancelChallenge: () => void;
   onResetChallenge: () => void;
   challengeSettings: any;
   dummyWinnerData: { teamName: string; topMembers: TopMember[] } | null;
@@ -46,7 +46,7 @@ export function GroupChallengeTabPresentational({
   onStartFinalChallenge,
   onUpdateTeamName,
   onEndChallenge,
-  onCancelChallenge, // 🔴 اضافه شدن تابع
+  onCancelChallenge,
   onResetChallenge,
   challengeSettings,
   dummyWinnerData,
@@ -86,6 +86,7 @@ export function GroupChallengeTabPresentational({
                 onReset={onResetChallenge}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
+                selectedDate={selectedDate}
               />
             ) : isChallengeActive ? (
               <ActiveChallengeBoard
@@ -94,9 +95,10 @@ export function GroupChallengeTabPresentational({
                 duration={duration}
                 onUpdateTeamName={onUpdateTeamName}
                 onEndChallenge={onEndChallenge}
-                onCancelChallenge={onCancelChallenge} // 🔴 پاس دادن تابع
+                onCancelChallenge={onCancelChallenge}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
+                selectedDate={selectedDate}
               />
             ) : hasStartedChallenge && challengeSettings ? (
               <TeamAllocationBoard
@@ -105,6 +107,7 @@ export function GroupChallengeTabPresentational({
                 onFinalStart={onStartFinalChallenge}
                 initialTopicLink={topicLink}
                 onTopicLinkSave={onTopicLinkSave}
+                selectedDate={selectedDate}
               />
             ) : (
               <View className="flex-1 items-center justify-center pt-10 px-6 opacity-60">

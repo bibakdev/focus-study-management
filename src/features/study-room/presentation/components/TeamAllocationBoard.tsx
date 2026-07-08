@@ -1,4 +1,5 @@
 // src/features/study-room/presentation/components/TeamAllocationBoard.tsx
+import { convertToImperialDate } from '@/core/utils/date';
 import { BottomSheetModal } from '@/shared/components/modals/BottomSheetModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -76,6 +77,7 @@ interface TeamAllocationBoardProps {
   onFinalStart: (finalMembers: TeamMember[]) => void;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
+  selectedDate?: string | null;
 }
 
 const getTeamStyles = (index: number) => {
@@ -224,7 +226,8 @@ export function TeamAllocationBoard({
   initialMembers,
   onFinalStart,
   initialTopicLink,
-  onTopicLinkSave
+  onTopicLinkSave,
+  selectedDate
 }: TeamAllocationBoardProps) {
   const [members, setMembers] = useState<TeamMember[]>(initialMembers);
 
@@ -256,7 +259,11 @@ export function TeamAllocationBoard({
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
 
-    const headerChunk = '⚔️ Team Allocation\n➖➖➖➖➖➖➖➖';
+    let headerChunk = '⚔️ Team Allocation';
+    if (selectedDate) {
+      headerChunk += `\n📅 ${convertToImperialDate(selectedDate)}`;
+    }
+    headerChunk += '\n➖➖➖➖➖➖➖➖';
     newChunks.push(headerChunk);
 
     teamNames.forEach((teamName, index) => {
@@ -275,7 +282,6 @@ export function TeamAllocationBoard({
       let currentChunk = teamHeader;
 
       teamMembers.forEach((m, mIndex) => {
-        // تغییر مهم: افزودن دو بار \n برای ایجاد فاصله بین کاربران
         const line = `  ${mIndex + 1}. ${m.name} - Target: ${m.target}\n\n`;
 
         if (

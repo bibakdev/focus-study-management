@@ -1,4 +1,5 @@
 // src/core/utils/date.ts
+
 export const getPersianWeekday = (dateStr: string): string => {
   const parts = dateStr.split('/');
   if (parts.length !== 3) return '';
@@ -74,4 +75,19 @@ export const getPersianDateStr = (date: Date): string => {
   } catch (e) {
     return '1400/01/01';
   }
+};
+
+/**
+ * تبدیل سال جلالی به شاهنشاهی با افزودن ۱۱۸۰ سال
+ */
+export const convertToImperialDate = (dateStr?: string | null): string => {
+  if (!dateStr) return '';
+  const parts = dateStr.split('/');
+  if (parts.length === 3) {
+    const year = parseInt(parts[0], 10);
+    if (!isNaN(year)) {
+      return `${year + 1180}/${parts[1]}/${parts[2]}`;
+    }
+  }
+  return dateStr;
 };

@@ -1,3 +1,4 @@
+import { convertToImperialDate } from '@/core/utils/date';
 import { BottomSheetModal } from '@/shared/components/modals/BottomSheetModal';
 import { Ionicons } from '@expo/vector-icons';
 import * as Clipboard from 'expo-clipboard';
@@ -42,6 +43,7 @@ interface RankingSectionProps {
   onTopicLinkSave?: (link: string) => void;
   displayType?: 'time' | 'number';
   valueSuffix?: string;
+  selectedDate?: string | null;
 }
 
 const formatTime = (minutes: number) => {
@@ -101,7 +103,8 @@ export function RankingSection({
   initialTopicLink,
   onTopicLinkSave,
   displayType = 'time',
-  valueSuffix = ''
+  valueSuffix = '',
+  selectedDate
 }: RankingSectionProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -125,7 +128,13 @@ export function RankingSection({
 
   const generateTextLines = (chunkSize?: number) => {
     const headerTitle = copyTitle || `${emoji} ${title}`;
-    let lines = [headerTitle, '➖️➖️➖️➖️➖️➖️➖️➖️'];
+    let lines = [headerTitle];
+
+    if (selectedDate) {
+      lines.push(`📅 ${convertToImperialDate(selectedDate)}`);
+    }
+
+    lines.push('➖️➖️➖️➖️➖️➖️➖️➖️');
 
     data.forEach((item, index) => {
       const rank = index + 1;

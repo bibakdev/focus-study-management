@@ -60,6 +60,7 @@ export function BananaTabPresentational({
               data={bananaResults}
               initialTopicLink={topicLink}
               onTopicLinkSave={onTopicLinkSave}
+              selectedDate={selectedDate}
             />
 
             <RankingSection
@@ -71,6 +72,7 @@ export function BananaTabPresentational({
               displayType="number"
               initialTopicLink={topicLink}
               onTopicLinkSave={onTopicLinkSave}
+              selectedDate={selectedDate}
             />
           </View>
         )}

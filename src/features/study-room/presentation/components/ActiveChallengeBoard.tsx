@@ -1,4 +1,5 @@
 // src/features/study-room/presentation/components/ActiveChallengeBoard.tsx
+import { convertToImperialDate } from '@/core/utils/date';
 import { PrimaryActionButton } from '@/shared/components/buttons/PrimaryActionButton';
 import { SecondaryButton } from '@/shared/components/buttons/SecondaryButton';
 import { TextInputWithIcon } from '@/shared/components/inputs/TextInputWithIcon';
@@ -70,6 +71,7 @@ interface ActiveChallengeBoardProps {
   onCancelChallenge: () => void;
   initialTopicLink?: string;
   onTopicLinkSave?: (link: string) => void;
+  selectedDate?: string | null;
 }
 
 const getTeamStyles = (index: number) => {
@@ -152,7 +154,8 @@ export function ActiveChallengeBoard({
   onEndChallenge,
   onCancelChallenge,
   initialTopicLink,
-  onTopicLinkSave
+  onTopicLinkSave,
+  selectedDate
 }: ActiveChallengeBoardProps) {
   const daysArray = Array.from({ length: duration }, (_, i) => i + 1);
 
@@ -194,7 +197,11 @@ export function ActiveChallengeBoard({
   const createChunks = (maxLength: number): string[] => {
     const newChunks: string[] = [];
 
-    const headerChunk = `⚔️ Group Challenge Status (Day ${currentDay} of ${duration})\n➖➖➖➖➖➖➖➖`;
+    let headerChunk = `⚔️ Group Challenge Status (Day ${currentDay} of ${duration})`;
+    if (selectedDate) {
+      headerChunk += `\n📅 ${convertToImperialDate(selectedDate)}`;
+    }
+    headerChunk += '\n➖➖➖➖➖➖➖➖';
     newChunks.push(headerChunk);
 
     teamsData.forEach((team, index) => {
@@ -217,7 +224,6 @@ export function ActiveChallengeBoard({
       team.members.forEach((m, mIndex) => {
         const studyStr = formatTimeStr(m.currentMinutes);
         const memTargetStr = formatTimeStr(m.dailyTargetMinutes * currentDay);
-        // تغییر مهم: افزودن دو بار \n برای ایجاد فاصله بین کاربران
         const line = `  ${mIndex + 1}. ${m.name} - Study: ${studyStr} | Target: ${memTargetStr}\n\n`;
 
         if (
